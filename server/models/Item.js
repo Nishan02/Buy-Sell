@@ -1,0 +1,21 @@
+import mongoose from 'mongoose';
+
+const itemSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    price: { type: Number, required: true },
+    category: { 
+        type: String, 
+        enum: ['Cycle', 'Cooler', 'Books', 'Electronics', 'Other'], 
+        required: true 
+    },
+    images: [{ type: String }], // Array of Cloudinary URLs
+    seller: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: true 
+    }, // Links the item to the person who posted it
+    isSold: { type: Boolean, default: false }
+}, { timestamps: true });
+
+export default mongoose.model('Item', itemSchema);

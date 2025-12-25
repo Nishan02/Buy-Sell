@@ -7,6 +7,7 @@ export const registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
+
         // 1. Check if email ends with your college domain
         const collegeDomain = "@mnnit.ac.in";
         
@@ -42,7 +43,8 @@ export const registerUser = async (req, res) => {
             await sendEmail({
                 email: user.email,
                 subject: 'Your College Marketplace Verification Code',
-                message: `Your verification code is: ${otp}. It expires in 20 minutes.`,
+                otp: otp,
+                name: name,
             });
             res.status(201).json({ message: "Verification code sent to email!" });
         } catch (err) {
@@ -121,3 +123,4 @@ export const loginUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
