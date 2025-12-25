@@ -6,6 +6,7 @@ import { FaSearch, FaUserCircle, FaStore } from 'react-icons/fa';
 
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -14,6 +15,16 @@ const Navbar = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/login');
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      // Navigate to home with the search query
+      navigate(`/?search=${searchTerm}`);
+    } else {
+      navigate('/');
+    }
   };
 
   const isLoggedIn = !!token;
@@ -33,18 +44,26 @@ const Navbar = () => {
           </div>
 
           {/* 2. MIDDLE: Search Bar */}
-          <div className="flex-1 max-w-2xl mx-4 lg:mx-8 hidden md:block">
+         <form 
+            onSubmit={handleSearch} 
+            className="flex-1 max-w-2xl mx-4 lg:mx-8 hidden md:block"
+          >
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FaSearch className="text-gray-400" />
               </span>
               <input
                 type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                setSearchTerm(e.target.value)
+                navigate(`/?search=${e.target.value}`);
+              }}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-full leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm"
                 placeholder="Search for books, cycles, electronics..."
               />
             </div>
-          </div>
+          </form>
 
           {/* 3. TOP RIGHT: Account Section */}
           <div className="flex items-center">

@@ -1,20 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom'; // 1. Import useLocation
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
 import ItemCard from '../components/ItemCard';
 import Footer from '../components/Footer';
-import API from '../api/axios.js'; // Import your custom axios instance
+import API from '../api/axios.js';
 
 const Home = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('');
+  
+  // 2. Get the current URL location
+  const location = useLocation();
 
-  // 1. Fetch items from backend
-  const fetchItems = async (category = '') => {
+  // 3. Helper to extract search query from URL
+  const queryParams = new URLSearchParams(location.search);
+  const searchQuery = queryParams.get('search') || '';
+
+  // 4. Fetch items logic (Updated to include search)
+  const fetchItems = async () => {
     try {
       setLoading(true);
-      const url = category ? `/items?category=${category}` : '/items';
+      
+      // Construct URL based on both Search and Category
+      let url = '/items?';
+      if (searchQuery) url += `search=${searchQuery}&`;
+      if (selectedCategory) url += `category=${selectedCategory}`;
+
       const response = await API.get(url);
       setItems(response.data);
     } catch (error) {
@@ -24,9 +37,10 @@ const Home = () => {
     }
   };
 
+  // 5. Trigger fetch whenever category OR search query changes
   useEffect(() => {
-    fetchItems(selectedCategory);
-  }, [selectedCategory]);
+    fetchItems();
+  }, [selectedCategory, searchQuery]); 
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50">
@@ -35,7 +49,7 @@ const Home = () => {
       <main className="flex-grow">
         <HeroSection />
 
-        {/* 2. Categories Section */}
+        {/* Categories Section */}
         <section className="bg-white py-8 shadow-sm border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Shop by Category</h3>
@@ -57,12 +71,12 @@ const Home = () => {
           </div>
         </section>
 
-        {/* 3. Items Grid Section */}
+        {/* Items Grid Section */}
         <section className="py-12" id="items">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-                {selectedCategory ? `${selectedCategory} listings` : 'Featured Items'}
+                {searchQuery ? `Results for "${searchQuery}"` : selectedCategory ? `${selectedCategory} listings` : 'Featured Items'}
               </h2>
             </div>
 
@@ -78,7 +92,7 @@ const Home = () => {
               </div>
             ) : (
               <div className="text-center py-20">
-                <p className="text-gray-500 text-lg">No items found in this category.</p>
+                <p className="text-gray-500 text-lg">No items found matching your criteria.</p>
               </div>
             )}
           </div>

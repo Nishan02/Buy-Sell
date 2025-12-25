@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ItemDetails from "./pages/ItemDetails";
 
 // --- PLACEHOLDERS (Temporary components until you create real files) ---
 const SellItem = () => <div className="p-10 text-2xl font-bold">Sell Item Page (Coming Soon)</div>;
@@ -16,6 +17,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/signup" element={<Auth />} />
+        <Route path="/item/:id" element={<ItemDetails />} />
 
         {/* === PROTECTED PAGES === */}
         <Route

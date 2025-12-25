@@ -38,41 +38,34 @@ export const getItems = async (req, res) => {
     try {
         const { search, category, minPrice, maxPrice, sortBy } = req.query;
         let query = {};
-        
-        // 1. Determine the Sort Order
-        let sortOptions = {};
 
-        if (sortBy === 'priceLow') {
-            sortOptions = { price: 1 }; // 1 = Ascending
-        } else if (sortBy === 'priceHigh') {
-            sortOptions = { price: -1 }; // -1 = Descending
-        } else if (sortBy === 'relevant' && search) {
-            sortOptions = { score: { $meta: "textScore" } };
-        } else {
-            sortOptions = { createdAt: -1 }; // Default: Newest first
-        }
-
-        // 2. Search Logic (Text Index)
+        // 1. Partial Search Logic (The Fix)
         if (search) {
-            query.$text = { $search: search };
+            // This matches the search string anywhere in the title or description
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } }
+            ];
         }
 
-        // 3. Category & Price Filters
+        // 2. Category Filter
         if (category) query.category = category;
+
+        // 3. Price Filter
         if (minPrice || maxPrice) {
             query.price = {};
             if (minPrice) query.price.$gte = Number(minPrice);
             if (maxPrice) query.price.$lte = Number(maxPrice);
         }
 
-        // 4. Execution
-        // Note: We include the textScore in the find projection ONLY if searching
-        const items = await Item.find(
-            query, 
-            search ? { score: { $meta: "textScore" } } : {}
-        )
-        .populate('seller', 'name email')
-        .sort(sortOptions);
+        // 4. Sorting Logic
+        let sortOptions = { createdAt: -1 };
+        if (sortBy === 'priceLow') sortOptions = { price: 1 };
+        if (sortBy === 'priceHigh') sortOptions = { price: -1 };
+
+        const items = await Item.find(query)
+            .populate('seller', 'name email')
+            .sort(sortOptions);
 
         res.status(200).json(items);
     } catch (error) {
@@ -120,17 +113,35 @@ export const deleteItem = async (req, res) => {
     }
 };
 
-export const updateItemStatus = async (req, res) => {
+export const getMyListings = async (req, res) => {
+    try {
+        // req.user.id comes from your 'protect' middleware
+        const myItems = await Item.find({ seller: req.user.id }).sort({ createdAt: -1 });
+        
+        res.status(200).json({
+            count: myItems.length,
+            items: myItems
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch your listings", error: error.message });
+    }
+};
+
+export const toggleSoldStatus = async (req, res) => {
     try {
         const item = await Item.findById(req.params.id);
 
-        if (!item) return res.status(404).json({ message: "Item not found" });
+        if (!item) {
+            return res.status(404).json({ message: "Item not found" });
+        }
 
+        // Security Check
         if (item.seller.toString() !== req.user.id) {
             return res.status(401).json({ message: "Not authorized" });
         }
 
-        item.isSold = req.body.isSold; 
+        // Toggle the current boolean value
+        item.isSold = !item.isSold;
         await item.save();
 
         res.status(200).json(item);
@@ -138,3 +149,5 @@ export const updateItemStatus = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+
