@@ -1,17 +1,43 @@
 // src/App.jsx
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Auth from './pages/Auth'; 
+import { Routes, Route } from "react-router-dom";
+import Auth from "./pages/Auth";
+import Home from "./pages/Home";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+// --- PLACEHOLDERS (Temporary components until you create real files) ---
+const SellItem = () => <div className="p-10 text-2xl font-bold">Sell Item Page (Coming Soon)</div>;
+const UserProfile = () => <div className="p-10 text-2xl font-bold">User Profile Page (Coming Soon)</div>;
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100 font-sans text-gray-900">
+    <div className="min-h-screen bg-gray-100">
       <Routes>
-        {/* Default path redirects to Login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        
-        {/* The only pages we care about right now */}
+        {/* === PUBLIC PAGES === */}
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/signup" element={<Auth />} />
+
+        {/* === PROTECTED PAGES === */}
+        <Route
+          path="/sell"
+          element={
+            <ProtectedRoute>
+              <SellItem />
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 Page */}
+        <Route path="*" element={<h1 className="text-center mt-20">404 Not Found</h1>} />
       </Routes>
     </div>
   );
