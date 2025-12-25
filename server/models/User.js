@@ -8,6 +8,9 @@ const userSchema = new mongoose.Schema({
         unique: true,
         lowercase: true 
     },
+    phone: { type: String },
+    year: { type: String }, // e.g., 1st Year, 2nd Year
+    profilePic: { type: String, default: "" },
     password: { type: String, required: true },
     isVerified: { type: Boolean, default: false },
     verificationCode: String,

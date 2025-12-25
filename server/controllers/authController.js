@@ -7,38 +7,53 @@ export const registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
-
-        // 1. Check if email ends with your college domain
+        // 1. Domain Check
         const collegeDomain = "@mnnit.ac.in";
-        
         if (!email.endsWith(collegeDomain)) {
             return res.status(403).json({ message: "Access restricted to college students only." });
         }
 
-        // 2. Check if user already exists
+        // 2. Check User Status
         const userExists = await User.findOne({ email });
+
         if (userExists) {
-            return res.status(400).json({ message: "User already exists" });
+            // If user is already verified, they truly "already exist"
+            if (userExists.isVerified) {
+                return res.status(400).json({ message: "User already exists. Please login." });
+            }
+            // If user exists but is NOT verified, we will "Update" them below instead of creating a new one
         }
 
         // 3. Hash the password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Generate 6-digit code
+        // 4. Generate 6-digit code
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpires = Date.now() + 20 * 60 * 1000;
 
+        let user;
 
-        // 4. Create User
-        const user = await User.create({
-            name,
-            email,
-            password: hashedPassword, // (Already hashed as discussed)
-            verificationCode: otp,
-            verificationCodeExpires: Date.now() + 20 * 60 * 1000, // Expires in 20 mins
-        });
+        if (userExists) {
+            // UPDATE existing unverified user with new details and new OTP
+            userExists.name = name;
+            userExists.password = hashedPassword;
+            userExists.verificationCode = otp;
+            userExists.verificationCodeExpires = otpExpires;
+            user = await userExists.save();
+        } else {
+            // CREATE brand new user
+            user = await User.create({
+                name,
+                email,
+                password: hashedPassword,
+                verificationCode: otp,
+                verificationCodeExpires: otpExpires,
+                isVerified: false
+            });
+        }
 
-        // Send Email
+        // 5. Send Email
         try {
             await sendEmail({
                 email: user.email,
@@ -49,9 +64,6 @@ export const registerUser = async (req, res) => {
             res.status(201).json({ message: "Verification code sent to email!" });
         } catch (err) {
             console.log("NODEMAILER ERROR:", err);
-            user.verificationCode = undefined;
-            user.verificationCodeExpires = undefined;
-            await user.save();
             return res.status(500).json({ message: "Email could not be sent" });
         }
 
@@ -61,6 +73,7 @@ export const registerUser = async (req, res) => {
 };
 
 export const verifyEmail = async (req, res) => {
+    try {
     const { email, otp } = req.body;
 
     const user = await User.findOne({
@@ -81,6 +94,10 @@ export const verifyEmail = async (req, res) => {
     await user.save();
 
     res.status(200).json({ message: "Email verified successfully! You can now login." });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 export const loginUser = async (req, res) => {
@@ -123,4 +140,5 @@ export const loginUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 
