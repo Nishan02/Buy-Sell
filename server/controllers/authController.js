@@ -1,10 +1,12 @@
 import User from '../models/User.js';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { sendEmail } from '../utils/sendEmail.js';
 
 export const registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body;
+
 
         // 1. Check if email ends with your college domain
         const collegeDomain = "@mnnit.ac.in";
@@ -41,7 +43,8 @@ export const registerUser = async (req, res) => {
             await sendEmail({
                 email: user.email,
                 subject: 'Your College Marketplace Verification Code',
-                message: `Your verification code is: ${otp}. It expires in 20 minutes.`,
+                otp: otp,
+                name: name,
             });
             res.status(201).json({ message: "Verification code sent to email!" });
         } catch (err) {
@@ -79,3 +82,45 @@ export const verifyEmail = async (req, res) => {
 
     res.status(200).json({ message: "Email verified successfully! You can now login." });
 };
+
+export const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // 1. Find the user
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // 2. Check if they verified their OTP
+        if (!user.isVerified) {
+            return res.status(401).json({ message: "Please verify your email first!" });
+        }
+
+        // 3. Compare Password
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        // 4. Generate JWT
+        const token = jwt.sign(
+            { id: user._id }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: '7d' } // Stays logged in for 7 days
+        );
+
+        res.status(200).json({
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
