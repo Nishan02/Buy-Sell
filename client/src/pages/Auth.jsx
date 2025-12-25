@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaHome, FaStore } from "react-icons/fa";
+
+import axios from 'axios';
 
 
 const Auth = () => {
@@ -15,6 +17,17 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const [agree, setAgree] = useState(false);
+
+  const token = localStorage.getItem('token');
+
+  useEffect(() => {
+    if (token) {
+      navigate('/');
+    }
+  }, [token, navigate]);
+
+
+
 
 
   // STATE: Form Data
@@ -49,70 +62,79 @@ const Auth = () => {
     setError('');
     setLoading(true);
 
-    // --- LOGIN FLOW ---
-    if (isLogin) {
-      if (!formData.email || !formData.password) {
-        setError('Please fill in all fields');
+    const API_URL = 'http://localhost:5000/api/auth'; // Adjust to your backend port
+
+    try {
+      // --- LOGIN FLOW ---
+      if (isLogin) {
+        const response = await axios.post(`${API_URL}/login`, {
+          email: formData.email,
+          password: formData.password
+        });
+
+        // Save token and user info to LocalStorage
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+
         setLoading(false);
-        return;
+        navigate('/'); // Redirect to home
       }
 
-      // TODO: Call your Backend Login API here
-      console.log('Logging in with:', formData.email, formData.password);
+      // --- SIGNUP FLOW (Step 1: Get Details / Send OTP) ---
+      else if (signupStep === 1) {
+        if (!validateEmail(formData.email)) {
+          setError('Only @mnnit.ac.in emails are allowed.');
+          setLoading(false);
+          return;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          setError('Passwords do not match.');
+          setLoading(false);
+          return;
+        }
 
-      // Simulate API delay
-      setTimeout(() => {
-        setLoading(false);
-        navigate('/'); // Redirect to home on success
-      }, 1500);
-    }
+        await axios.post(`${API_URL}/register`, {
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password
+        });
 
-    // --- SIGNUP FLOW (Step 1: Get Details) ---
-    else if (signupStep === 1) {
-      // 1. Validation
-      if (!validateEmail(formData.email)) {
-        setError('Only @mnnit.ac.in emails are allowed.');
-        setLoading(false);
-        return;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match.');
-        setLoading(false);
-        return;
-      }
-
-      // TODO: Call Backend to send OTP to email
-      console.log('Sending OTP to:', formData.email);
-
-      // Simulate API delay
-      setTimeout(() => {
         setLoading(false);
         setSignupStep(2); // Move to OTP step
-      }, 1500);
-    }
-
-    // --- SIGNUP FLOW (Step 2: Verify OTP) ---
-    else if (signupStep === 2) {
-      if (formData.otp.length !== 6) {
-        setError('Please enter a valid 6-digit code.');
-        setLoading(false);
-        return;
       }
 
-      // TODO: Call Backend to Verify OTP and Create Account
-      console.log('Verifying OTP:', formData.otp);
+      // --- SIGNUP FLOW (Step 2: Verify OTP) ---
+      else if (signupStep === 2) {
+        const response = await axios.post(`${API_URL}/verify`, {
+          email: formData.email,
+          otp: formData.otp
+        });
 
-      // Simulate API delay
-      setTimeout(() => {
-        setLoading(false);
         alert('Account created successfully!');
-        navigate('/'); // Redirect to home
-      }, 1500);
+        setIsLogin(true); // Take them back to login or auto-login them
+        setSignupStep(1);
+        setLoading(false);
+      }
+
+    } catch (err) {
+      setLoading(false);
+      // Display the specific error message from your backend
+      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+     
+     <div className="absolute top-6 left-6">
+                 <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600">
+                   {/* This icon caused the crash before. It works now. */}
+                   <FaStore className="h-8 w-8 mr-2" />
+                   Campus<span className="text-gray-800">Mart</span>
+                 </Link>
+               </div>
+
+
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* Logo or Title */}
@@ -176,37 +198,37 @@ const Auth = () => {
 
             {/* --- BOTH: Password --- */}
             {(isLogin || signupStep === 1) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
 
-              <div className="mt-1 relative">
-                <input
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder={!isLogin ? "Create a strong password" : undefined}
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm 
+                <div className="mt-1 relative">
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder={!isLogin ? "Create a strong password" : undefined}
+                    required
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm 
                  placeholder-gray-400 focus:outline-none focus:ring-brand focus:border-brand sm:text-sm"
-                />
+                  />
 
-                {/* Eye Icon */}
-                {formData.password && (
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(prev => !prev)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                  </button>
-                )}
-                
+                  {/* Eye Icon */}
+                  {formData.password && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(prev => !prev)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  )}
 
+
+                </div>
               </div>
-            </div>
             )}
 
             {/* --- SIGNUP ONLY: Confirm Password --- */}
@@ -324,7 +346,7 @@ const Auth = () => {
                   setSignupStep(1); // Reset step when switching
                   setError('');
                 }}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-[#5dbd62] text-black text-sm font-medium text-gray-500 hover:bg-[#51a956] "
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-[#5dbd62] text-gray-800 text-sm font-medium hover:bg-[#51a956] "
               >
                 {isLogin ? 'Create an account' : 'Sign in instead'}
               </button>

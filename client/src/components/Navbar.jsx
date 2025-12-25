@@ -1,17 +1,22 @@
 // src/components/Navbar.jsx
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 // FIX: I added FaStore to this list so the error will vanish
 import { FaSearch, FaUserCircle, FaStore } from 'react-icons/fa'; 
 
 const Navbar = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setIsDropdownOpen(false);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
   };
+
+  const isLoggedIn = !!token;
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">

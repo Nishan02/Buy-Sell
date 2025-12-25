@@ -18,4 +18,6 @@ const itemSchema = new mongoose.Schema({
     isSold: { type: Boolean, default: false }
 }, { timestamps: true });
 
+itemSchema.index({ title: 'text', description: 'text' });
+
 export default mongoose.model('Item', itemSchema);

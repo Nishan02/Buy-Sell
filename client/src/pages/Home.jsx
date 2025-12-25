@@ -1,18 +1,38 @@
-// src/pages/Home.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
 import ItemCard from '../components/ItemCard';
 import Footer from '../components/Footer';
-import { categories, items } from '../data/MockData';
+import API from '../api/axios.js'; // Import your custom axios instance
 
 const Home = () => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  // 1. Fetch items from backend
+  const fetchItems = async (category = '') => {
+    try {
+      setLoading(true);
+      const url = category ? `/items?category=${category}` : '/items';
+      const response = await API.get(url);
+      setItems(response.data);
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems(selectedCategory);
+  }, [selectedCategory]);
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50">
       <Navbar />
       
       <main className="flex-grow">
-        {/* 1. Hero Section (Big middle box) */}
         <HeroSection />
 
         {/* 2. Categories Section */}
@@ -20,12 +40,17 @@ const Home = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Shop by Category</h3>
             <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
-              {categories.map((category) => (
+              {['Cycle', 'Cooler', 'Books', 'Electronics', 'Other'].map((cat) => (
                 <button
-                  key={category.id}
-                  className="inline-flex items-center px-5 py-2.5 rounded-full text-sm font-medium text-gray-700 bg-gray-100 hover:bg-indigo-100 hover:text-indigo-700 transition-colors duration-200 whitespace-nowrap"
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat === selectedCategory ? '' : cat)}
+                  className={`inline-flex items-center px-5 py-2.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap ${
+                    selectedCategory === cat 
+                    ? 'bg-indigo-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-indigo-100'
+                  }`}
                 >
-                  {category.name}
+                  {cat}
                 </button>
               ))}
             </div>
@@ -36,14 +61,26 @@ const Home = () => {
         <section className="py-12" id="items">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold tracking-tight text-gray-900">Featured Items</h2>
-              <a href="#" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">View all &rarr;</a>
+              <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+                {selectedCategory ? `${selectedCategory} listings` : 'Featured Items'}
+              </h2>
             </div>
-            <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-              {items.map((item) => (
-                <ItemCard key={item.id} item={item} />
-              ))}
-            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+              </div>
+            ) : items.length > 0 ? (
+              <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
+                {items.map((item) => (
+                  <ItemCard key={item._id} item={item} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20">
+                <p className="text-gray-500 text-lg">No items found in this category.</p>
+              </div>
+            )}
           </div>
         </section>
       </main>

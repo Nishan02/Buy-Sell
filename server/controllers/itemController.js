@@ -36,24 +36,43 @@ export const createItem = async (req, res) => {
 // Also adding a logic to "Get All Items" for the home page
 export const getItems = async (req, res) => {
     try {
-        const { category, search } = req.query;
+        const { search, category, minPrice, maxPrice, sortBy } = req.query;
         let query = {};
+        
+        // 1. Determine the Sort Order
+        let sortOptions = {};
 
-        // Filter by category if provided
-        if (category) {
-            query.category = category;
+        if (sortBy === 'priceLow') {
+            sortOptions = { price: 1 }; // 1 = Ascending
+        } else if (sortBy === 'priceHigh') {
+            sortOptions = { price: -1 }; // -1 = Descending
+        } else if (sortBy === 'relevant' && search) {
+            sortOptions = { score: { $meta: "textScore" } };
+        } else {
+            sortOptions = { createdAt: -1 }; // Default: Newest first
         }
 
-        // Search by title if provided (case-insensitive)
+        // 2. Search Logic (Text Index)
         if (search) {
-            query.title = { $regex: search, $options: 'i' };
+            query.$text = { $search: search };
         }
 
-        // .populate('seller', 'name email') joins the User data 
-        // but only gives us the name and email for safety.
-        const items = await Item.find(query)
-            .populate('seller', 'name email') 
-            .sort({ createdAt: -1 }); // Show newest items first
+        // 3. Category & Price Filters
+        if (category) query.category = category;
+        if (minPrice || maxPrice) {
+            query.price = {};
+            if (minPrice) query.price.$gte = Number(minPrice);
+            if (maxPrice) query.price.$lte = Number(maxPrice);
+        }
+
+        // 4. Execution
+        // Note: We include the textScore in the find projection ONLY if searching
+        const items = await Item.find(
+            query, 
+            search ? { score: { $meta: "textScore" } } : {}
+        )
+        .populate('seller', 'name email')
+        .sort(sortOptions);
 
         res.status(200).json(items);
     } catch (error) {
