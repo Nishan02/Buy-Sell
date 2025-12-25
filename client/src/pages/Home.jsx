@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom'; // 1. Import useLocation
+import { useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
 import ItemCard from '../components/ItemCard';
@@ -10,23 +10,21 @@ const Home = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('');
-  
-  // 2. Get the current URL location
-  const location = useLocation();
+  const [sortBy, setSortBy] = useState(''); // New state for sorting
 
-  // 3. Helper to extract search query from URL
+  const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const searchQuery = queryParams.get('search') || '';
 
-  // 4. Fetch items logic (Updated to include search)
   const fetchItems = async () => {
     try {
       setLoading(true);
       
-      // Construct URL based on both Search and Category
+      // Constructing URL with Search, Category, and SortBy
       let url = '/items?';
       if (searchQuery) url += `search=${searchQuery}&`;
-      if (selectedCategory) url += `category=${selectedCategory}`;
+      if (selectedCategory) url += `category=${selectedCategory}&`;
+      if (sortBy) url += `sortBy=${sortBy}`; // Send sorting param to backend
 
       const response = await API.get(url);
       setItems(response.data);
@@ -37,10 +35,9 @@ const Home = () => {
     }
   };
 
-  // 5. Trigger fetch whenever category OR search query changes
   useEffect(() => {
     fetchItems();
-  }, [selectedCategory, searchQuery]); 
+  }, [selectedCategory, searchQuery, sortBy]); // Added sortBy as dependency
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50">
@@ -49,28 +46,74 @@ const Home = () => {
       <main className="flex-grow">
         <HeroSection />
 
-        {/* Categories Section */}
+        {/* Filters & Sorting Section */}
         <section className="bg-white py-8 shadow-sm border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Shop by Category</h3>
-            <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
-              {['Cycle', 'Cooler', 'Books', 'Electronics', 'Other'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat === selectedCategory ? '' : cat)}
-                  className={`inline-flex items-center px-5 py-2.5 rounded-full text-sm font-medium transition-colors duration-200 whitespace-nowrap ${
-                    selectedCategory === cat 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-indigo-100'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className="flex flex-col lg:flex-row lg:items-start lg:space-x-12 space-y-8 lg:space-y-0">
+              
+              {/* 1. LEFT SIDE: Sort By Price */}
+              <div className="flex-shrink-0">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Sort By</h3>
+                <div className="flex flex-wrap gap-2">
+                   {/* If there is a search query, show "Relevant" option */}
+                   {searchQuery && (
+                    <button
+                      onClick={() => setSortBy(sortBy === 'relevant' ? '' : 'relevant')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                        sortBy === 'relevant'
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      Most Relevant
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSortBy(sortBy === 'priceLow' ? '' : 'priceLow')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      sortBy === 'priceLow'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    Price: Low to High
+                  </button>
+                  <button
+                    onClick={() => setSortBy(sortBy === 'priceHigh' ? '' : 'priceHigh')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      sortBy === 'priceHigh'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    Price: High to Low
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. RIGHT SIDE: Shop by Category */}
+              <div className="flex-1 overflow-hidden">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Shop by Category</h3>
+                <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {['Cycle', 'Cooler', 'Books', 'Electronics', 'Other'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat === selectedCategory ? '' : cat)}
+                      className={`inline-flex items-center px-5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                        selectedCategory === cat 
+                        ? 'bg-indigo-600 text-white shadow-md' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
-
         {/* Items Grid Section */}
         <section className="py-12" id="items">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
