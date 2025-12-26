@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { storage } from '../utils/cloudinaryConfig.js';
 import { protect } from '../middleware/authMiddleware.js';
-import { createItem, deleteItem, getItemById, getItems, getMyItems, getMyListings, toggleSoldStatus} from '../controllers/itemController.js';
+import { createItem, deleteItem, getItemById, getItems, getMyItems, getMyListings, toggleSoldStatus, updateItem} from '../controllers/itemController.js';
 
 const router = express.Router();
 const upload = multer({ storage });
@@ -20,6 +20,8 @@ router.get('/my-items', protect, getMyItems);
 router.get('/my-listings', protect, getMyListings);
 
 router.get('/:id', getItemById);
+
+router.put('/:id', protect, upload.single('image'), updateItem);
 
 // Delete an item
 router.delete('/:id', protect, deleteItem);

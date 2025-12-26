@@ -4,6 +4,8 @@ import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ItemDetails from "./pages/ItemDetails";
+import MyListings from "./pages/MyListings";
+import EditItem from "./pages/EditItem";
 
 // --- PLACEHOLDERS (Temporary components until you create real files) ---
 const SellItem = () => <div className="p-10 text-2xl font-bold">Sell Item Page (Coming Soon)</div>;
@@ -18,6 +20,7 @@ function App() {
         <Route path="/login" element={<Auth />} />
         <Route path="/signup" element={<Auth />} />
         <Route path="/item/:id" element={<ItemDetails />} />
+        <Route path="/edit-item/:id" element={<EditItem />} />
 
         {/* === PROTECTED PAGES === */}
         <Route
@@ -37,6 +40,15 @@ function App() {
             </ProtectedRoute>
           }
         />
+          <Route
+          path="/my-listings"
+          element={
+            <ProtectedRoute>
+              <MyListings />
+            </ProtectedRoute>
+          }
+        />
+        
 
         {/* 404 Page */}
         <Route path="*" element={<h1 className="text-center mt-20">404 Not Found</h1>} />

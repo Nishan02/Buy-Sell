@@ -150,4 +150,34 @@ export const toggleSoldStatus = async (req, res) => {
     }
 };
 
+export const updateItem = async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: "Item not found" });
 
+    // 1. Build the update object from req.body (Multer populates this)
+    const updateData = {
+      title: req.body.title,
+      price: req.body.price,
+      description: req.body.description,
+      category: req.body.category,
+    };
+
+    // 2. Only update the image if a NEW file was actually uploaded
+    if (req.file) {
+      // Use req.file.path if using Cloudinary, or req.file.filename if local
+      updateData.images = [req.file.path || req.file.secure_url];
+    }
+
+    const updatedItem = await Item.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    res.status(200).json(updatedItem);
+  } catch (error) {
+    console.error("Update Error:", error);
+    res.status(500).json({ message: "Server error during update" });
+  }
+};
