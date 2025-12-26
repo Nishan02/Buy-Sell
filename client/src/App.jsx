@@ -6,9 +6,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ItemDetails from "./pages/ItemDetails";
 import MyListings from "./pages/MyListings";
 import EditItem from "./pages/EditItem";
+import SellItem from "./pages/SellItem";
 
 // --- PLACEHOLDERS (Temporary components until you create real files) ---
-const SellItem = () => <div className="p-10 text-2xl font-bold">Sell Item Page (Coming Soon)</div>;
+//const SellItem = () => <div className="p-10 text-2xl font-bold">Sell Item Page (Coming Soon)</div>;
 const UserProfile = () => <div className="p-10 text-2xl font-bold">User Profile Page (Coming Soon)</div>;
 
 function App() {
@@ -26,7 +27,7 @@ function App() {
         <Route
           path="/sell"
           element={
-            <ProtectedRoute>
+             <ProtectedRoute>
               <SellItem />
             </ProtectedRoute>
           }
@@ -45,6 +46,15 @@ function App() {
           element={
             <ProtectedRoute>
               <MyListings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/sell"
+          element={
+            <ProtectedRoute>
+              <SellItem />
             </ProtectedRoute>
           }
         />
