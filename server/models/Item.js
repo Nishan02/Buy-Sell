@@ -15,7 +15,8 @@ const itemSchema = new mongoose.Schema({
         ref: 'User', 
         required: true 
     }, // Links the item to the person who posted it
-    isSold: { type: Boolean, default: false }
+    isSold: { type: Boolean, default: false },
+    contactNumber: { type: String, required: true }
 }, { timestamps: true });
 
 itemSchema.index({ title: 'text', description: 'text' });

@@ -1,12 +1,8 @@
 import Item from '../models/Item.js';
 
 export const createItem = async (req, res) => {
-    try {
-        console.log("--- New Upload Attempt ---");
-        console.log("User from Token:", req.user); // Check if this is undefined
-        console.log("File from Multer:", req.file);
-
-        const { title, description, price, category } = req.body;
+    try { 
+        const { title, description, price, category, contactNumber } = req.body;
 
         // Check if an image was actually uploaded
         if (!req.file) {
@@ -18,6 +14,7 @@ export const createItem = async (req, res) => {
             description,
             price: Number(price),
             category,
+            contactNumber,
             images: [req.file.path], // req.file.path is the Cloudinary URL
             seller: req.user.id      // Taken from our 'protect' middleware
         });
@@ -161,6 +158,7 @@ export const updateItem = async (req, res) => {
       price: req.body.price,
       description: req.body.description,
       category: req.body.category,
+      contactNumber: req.body.contactNumber
     };
 
     // 2. Only update the image if a NEW file was actually uploaded

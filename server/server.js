@@ -7,6 +7,7 @@ import connectDB from './config/db.js'; // Note the .js extension!
 import authRoutes from './routes/authRoutes.js';
 import itemRoutes from './routes/itemRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import lostFoundRoutes from './routes/lostFoundRoutes.js';
 
 // Load env vars
 
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/lost-found', lostFoundRoutes);
 
 app.get('/', (req, res) => {
     res.send('API is running...');

@@ -1,11 +1,9 @@
 import express from 'express';
-import multer from 'multer';
-import { storage } from '../utils/cloudinaryConfig.js';
+import { upload } from '../middleware/multer.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { createItem, deleteItem, getItemById, getItems, getMyItems, getMyListings, toggleSoldStatus, updateItem} from '../controllers/itemController.js';
 
 const router = express.Router();
-const upload = multer({ storage });
 
 // 1. Post a new item (Protected: User must be logged in)
 // 'image' is the name of the field we will use in Postman
