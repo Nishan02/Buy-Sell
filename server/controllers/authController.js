@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -183,6 +184,86 @@ export const resendOtp = async (req, res) => {
 
     res.status(200).json({ message: "New OTP sent to your email" });
 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// FORGOT PASSWORD (Sends the Link)
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate Reset Token (Random Hex String)
+    const resetToken = crypto.randomBytes(20).toString('hex');
+
+    // Hash the token and save to DB
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 Minutes
+    
+    await user.save();
+
+    // Create the Reset URL (Frontend Route)
+    // Make sure 'localhost:5173' matches your Frontend Port
+    const resetUrl = `http://localhost:5173/passwordreset/${resetToken}`;
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Reset Your Password - CampusMart",
+        resetUrl: resetUrl, // <--- Key change: passing URL specifically for the template
+        name: user.name
+      });
+
+      res.status(200).json({ message: "Email sent" });
+    } catch (err) {
+      console.error("FORGOT PASSWORD ERROR:", err);
+      // If email fails, clear the token so user isn't locked out
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+      return res.status(500).json({ message: "Email could not be sent" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 2. RESET PASSWORD (Verifies Token & Sets New Password)
+export const resetPassword = async (req, res) => {
+  try {
+    // Hash the token from the URL to compare with the one in DB
+    const resetPasswordToken = crypto.createHash('sha256').update(req.params.resetToken).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() } // Check if time > now (not expired)
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+   
+    // Assuming you are manually hashing or have middleware:
+    if(req.body.password) {
+        // If you are hashing manually in register, do it here too:
+        const importBcrypt = await import('bcryptjs'); // Dynamic import if needed or use top-level
+        const salt = await importBcrypt.default.genSalt(10);
+        user.password = await importBcrypt.default.hash(req.body.password, salt);
+    }
+
+    // Clear reset fields
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

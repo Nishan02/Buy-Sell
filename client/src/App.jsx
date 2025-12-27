@@ -9,6 +9,8 @@ import EditItem from "./pages/EditItem";
 import SellItem from "./pages/SellItem";
 import UserProfile from "./pages/UserProfile";
 import Settings from "./pages/Settings";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 
 function App() {
@@ -21,6 +23,8 @@ function App() {
         <Route path="/signup" element={<Auth />} />
         <Route path="/item/:id" element={<ItemDetails />} />
         <Route path="/edit-item/:id" element={<EditItem />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/passwordreset/:resetToken" element={<ResetPassword />} />
 
         {/* === PROTECTED PAGES === */}
         <Route
