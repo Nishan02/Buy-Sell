@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaHome, FaStore } from "react-icons/fa";
-
+import { FaEye, FaEyeSlash, FaStore } from "react-icons/fa";
 import axios from 'axios';
-
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -15,7 +13,6 @@ const Auth = () => {
   const [signupStep, setSignupStep] = useState(1);
 
   const [showPassword, setShowPassword] = useState(false);
-
   const [agree, setAgree] = useState(false);
 
   const token = localStorage.getItem('token');
@@ -25,10 +22,6 @@ const Auth = () => {
       navigate('/');
     }
   }, [token, navigate]);
-
-
-
-
 
   // STATE: Form Data
   const [formData, setFormData] = useState({
@@ -56,13 +49,26 @@ const Auth = () => {
     return collegeRegex.test(email);
   };
 
+  // LOGIC: Resend OTP
+  const handleResendOtp = async () => {
+    setError('');
+    try {
+      await axios.post('http://localhost:5000/api/auth/resend-otp', {
+        email: formData.email
+      });
+      alert("New code sent! Check your email.");
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to resend OTP');
+    }
+  };
+
   // LOGIC: Handle Form Submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const API_URL = 'http://localhost:5000/api/auth'; // Adjust to your backend port
+    const API_URL = 'http://localhost:5000/api/auth'; 
 
     try {
       // --- LOGIN FLOW ---
@@ -105,44 +111,40 @@ const Auth = () => {
 
       // --- SIGNUP FLOW (Step 2: Verify OTP) ---
       else if (signupStep === 2) {
-        const response = await axios.post(`${API_URL}/verify`, {
+        // Updated Endpoint to match your backend (/verify-otp)
+        await axios.post(`${API_URL}/verify-otp`, {
           email: formData.email,
           otp: formData.otp
         });
 
         alert('Account created successfully!');
-        setIsLogin(true); // Take them back to login or auto-login them
+        setIsLogin(true); // Take them back to login
         setSignupStep(1);
         setLoading(false);
       }
 
     } catch (err) {
       setLoading(false);
-      // Display the specific error message from your backend
       setError(err.response?.data?.message || 'Something went wrong. Please try again.');
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-     
-     <div className="absolute top-6 left-6">
-                 <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600">
-                   {/* This icon caused the crash before. It works now. */}
-                   <FaStore className="h-8 w-8 mr-2" />
-                   Campus<span className="text-gray-800">Mart</span>
-                 </Link>
-               </div>
-
-
+      
+      <div className="absolute top-6 left-6">
+         <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600">
+           <FaStore className="h-8 w-8 mr-2" />
+           Campus<span className="text-gray-800">Mart</span>
+         </Link>
+      </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Logo or Title */}
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           {isLogin ? 'Sign in to your account' : 'Create your account'}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Access the secure campus buy&sell goods
+          Access the secure campus buy & sell goods
         </p>
       </div>
 
@@ -151,7 +153,6 @@ const Auth = () => {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
 
-            {/* Show error if exists */}
             {error && (
               <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-2 rounded text-sm">
                 {error}
@@ -170,7 +171,7 @@ const Auth = () => {
                     placeholder="Your full name"
                     value={formData.fullName}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand focus:border-brand sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -190,7 +191,7 @@ const Auth = () => {
                     placeholder="name.regNo@mnnit.ac.in"
                     value={formData.email}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand focus:border-brand sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -202,7 +203,6 @@ const Auth = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   Password
                 </label>
-
                 <div className="mt-1 relative">
                   <input
                     name="password"
@@ -211,11 +211,8 @@ const Auth = () => {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm 
-                 placeholder-gray-400 focus:outline-none focus:ring-brand focus:border-brand sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
-
-                  {/* Eye Icon */}
                   {formData.password && (
                     <button
                       type="button"
@@ -225,9 +222,15 @@ const Auth = () => {
                       {showPassword ? <FaEyeSlash /> : <FaEye />}
                     </button>
                   )}
-
-
                 </div>
+                {/* Forgot Password Link (Login Only) */}
+                {isLogin && (
+                    <div className="flex items-center justify-end mt-1">
+                        <Link to="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            Forgot your password?
+                        </Link>
+                    </div>
+                )}
               </div>
             )}
 
@@ -242,7 +245,7 @@ const Auth = () => {
                     required
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand focus:border-brand sm:text-sm"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -264,13 +267,27 @@ const Auth = () => {
                     required
                     value={formData.otp}
                     onChange={handleChange}
-                    className="text-center text-2xl tracking-widest appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand focus:border-brand"
+                    className="text-center text-2xl tracking-widest appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                </div>
+                
+                {/* Resend Code Link */}
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-gray-600">
+                    Didn't receive the code?{' '}
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      className="font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
+                    >
+                      Resend Code
+                    </button>
+                  </p>
                 </div>
               </div>
             )}
 
-            {!isLogin && signupStep == 1 && (
+            {!isLogin && signupStep === 1 && (
               <div className="flex items-start gap-2 mt-4">
                 <input
                   id="terms"
@@ -279,22 +296,11 @@ const Auth = () => {
                   onChange={(e) => setAgree(e.target.checked)}
                   className="mt-1 h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                 />
-
                 <label htmlFor="terms" className="text-sm text-gray-600">
                   I agree to the{" "}
-                  <Link
-                    to="/terms"
-                    className="text-green-600 hover:underline font-medium"
-                  >
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    to="/privacy"
-                    className="text-green-600 hover:underline font-medium"
-                  >
-                    Privacy Policy
-                  </Link>
+                  <Link to="/terms" className="text-green-600 hover:underline font-medium">Terms of Service</Link>
+                  {" "}and{" "}
+                  <Link to="/privacy" className="text-green-600 hover:underline font-medium">Privacy Policy</Link>
                 </label>
               </div>
             )}
@@ -303,14 +309,12 @@ const Auth = () => {
             <div>
               <button
                 type="submit"
-                disabled={loading || (!isLogin && !agree)}
+                disabled={loading || (!isLogin && !agree && signupStep === 1)}
                 className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white
-      ${loading || (!isLogin && !agree)
+                  ${loading || (!isLogin && !agree && signupStep === 1)
                     ? 'bg-indigo-400 cursor-not-allowed'
                     : 'bg-indigo-600 hover:bg-indigo-700'
-                  }
-      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-    `}
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
               >
                 {loading
                   ? 'Processing...'
@@ -324,7 +328,6 @@ const Auth = () => {
             </div>
 
           </form>
-
 
           {/* --- TOGGLE LOGIN / SIGNUP --- */}
           <div className="mt-6">
@@ -346,7 +349,7 @@ const Auth = () => {
                   setSignupStep(1); // Reset step when switching
                   setError('');
                 }}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-[#5dbd62] text-gray-800 text-sm font-medium hover:bg-[#51a956] "
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-[#5dbd62] text-gray-800 text-sm font-medium hover:bg-[#51a956]"
               >
                 {isLogin ? 'Create an account' : 'Sign in instead'}
               </button>

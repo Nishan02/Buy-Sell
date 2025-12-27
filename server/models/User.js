@@ -5,16 +5,26 @@ const userSchema = new mongoose.Schema({
     email: { 
         type: String, 
         required: true, 
-        unique: true,
+        unique: true, 
         lowercase: true 
     },
-    phone: { type: String },
-    year: { type: String }, // e.g., 1st Year, 2nd Year
-    profilePic: { type: String, default: "" },
     password: { type: String, required: true },
+    
+    // Profile Fields
+    phone: { type: String },
+    year: { type: String }, 
+    profilePic: { type: String, default: "" },
+
+    // --- VERIFICATION FIELDS (Standardized) ---
     isVerified: { type: Boolean, default: false },
-    verificationCode: String,
-    verificationCodeExpires: Date,
+    otp: { type: String },          // Use this for the 6-digit code
+    otpExpires: { type: Date },     // Use this to check expiry (optional but recommended)
+    // ------------------------------------------
+
+    // Password Reset Fields
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
+
 }, { timestamps: true });
 
 export default mongoose.model('User', userSchema);

@@ -47,8 +47,8 @@ export const registerUser = async (req, res) => {
                 name,
                 email,
                 password: hashedPassword,
-                verificationCode: otp,
-                verificationCodeExpires: otpExpires,
+                otp: otp,
+                otpExpires: otpExpires,
                 isVerified: false
             });
         }
@@ -74,28 +74,37 @@ export const registerUser = async (req, res) => {
 
 export const verifyEmail = async (req, res) => {
     try {
-    const { email, otp } = req.body;
+        const { email, otp } = req.body;
 
-    const user = await User.findOne({
-        email,
-        verificationCode: otp,
-        verificationCodeExpires: { $gt: Date.now() }, // Check if code is not expired
-    });
+        // 1. Find the user just by email first
+        const user = await User.findOne({ email });
 
-    if (!user) {
-        // Debugging tip: Log what's happening to your terminal
-        console.log(`Failed verify attempt for: ${email} with code: ${otp}`);
-        return res.status(400).json({ message: "Invalid or expired code" });
-    }
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
 
-    user.isVerified = true;
-    user.verificationCode = undefined;
-    user.verificationCodeExpires = undefined;
-    await user.save();
+        // 2. Check if already verified
+        if (user.isVerified) {
+            return res.status(200).json({ message: "User already verified" });
+        }
 
-    res.status(200).json({ message: "Email verified successfully! You can now login." });
+        // 3. Check if the OTP matches (Compare user.otp vs req.body.otp)
+        // We use toString() and trim() to ensure no hidden spaces cause errors
+        if (!user.otp || user.otp.toString().trim() !== otp.toString().trim()) {
+             // Debugging log
+             console.log(`Mismatch: DB says ${user.otp}, User entered ${otp}`);
+             return res.status(400).json({ message: "Invalid verification code" });
+        }
+
+        // 4. Success
+        user.isVerified = true;
+        user.otp = undefined; // Clear the code
+        await user.save();
+
+        res.status(200).json({ message: "Email verified successfully! You can now login." });
 
     } catch (error) {
+        console.error("Verify Error:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -142,3 +151,39 @@ export const loginUser = async (req, res) => {
 };
 
 
+// authController.js
+
+export const resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Account is already verified. Please login." });
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Update user with new OTP
+    user.otp = otp;
+    await user.save();
+
+    // Send Email (Reuse your existing sendEmail function)
+    await sendEmail({
+      email: user.email,
+      subject: "Resend Verification Code - CampusMart",
+      otp: otp,    
+      name: user.name
+    });
+
+    res.status(200).json({ message: "New OTP sent to your email" });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
