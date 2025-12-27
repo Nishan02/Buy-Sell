@@ -8,6 +8,7 @@ import MyListings from "./pages/MyListings";
 import EditItem from "./pages/EditItem";
 import SellItem from "./pages/SellItem";
 import UserProfile from "./pages/UserProfile";
+import Settings from "./pages/Settings";
 
 
 function App() {
@@ -44,6 +45,15 @@ function App() {
           element={
             <ProtectedRoute>
               <MyListings />
+            </ProtectedRoute>
+          }
+        />
+
+         <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />
