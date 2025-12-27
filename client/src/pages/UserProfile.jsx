@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import { FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaEdit, FaSave, FaTimes, FaCamera } from 'react-icons/fa';
 
@@ -8,7 +8,14 @@ const UserProfile = () => {
     email: '',
     phone: '',
     year: '',
+    profilePic: '' // Holds the URL from backend
   });
+
+  // New State for Image Handling
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  
+  const fileInputRef = useRef(null); // Reference to hidden file input
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -33,7 +40,14 @@ const UserProfile = () => {
           email: data.email || '',
           phone: data.phone || '',
           year: data.year || '',
+          profilePic: data.profilePic || '' // Ensure backend sends this
         });
+        
+        // If user has a pic, set it as initial preview
+        if (data.profilePic) {
+            setImagePreview(data.profilePic);
+        }
+
       } catch (err) {
         setError(err.message);
       } finally {
@@ -44,37 +58,64 @@ const UserProfile = () => {
     fetchProfile();
   }, []);
 
-  // Handle Input Change
+  // Handle Text Input Change
   const handleChange = (e) => {
     setUser({ ...user, [e.target.name]: e.target.value });
   };
 
-  // Save Changes to Backend
+  // Handle Image Selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      // Create a local preview URL
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Trigger File Input Click
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
+  // Save Changes to Backend (Updated for FormData)
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('token');
+      
+      // 1. Use FormData instead of JSON
+      const formData = new FormData();
+      formData.append('name', user.name);
+      formData.append('phone', user.phone);
+      formData.append('year', user.year);
+      
+      // Only append image if a new one was selected
+      if (imageFile) {
+        formData.append('profilePic', imageFile); 
+      }
+
       const response = await fetch('http://localhost:5000/api/users/profile', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
+          // IMPORTANT: Do NOT set Content-Type to application/json
+          // Browser will automatically set Content-Type to multipart/form-data
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          name: user.name,
-          phone: user.phone,
-          year: user.year,
-          // We are not sending password here to keep it simple, 
-          // but you can add a "Change Password" modal later.
-        })
+        body: formData 
       });
 
       if (!response.ok) throw new Error('Failed to update profile');
       
       const updatedData = await response.json();
       
-      // Update local storage so Navbar name updates immediately
+      // Update local storage so Navbar name/pic updates immediately
       const savedUser = JSON.parse(localStorage.getItem('user'));
-      localStorage.setItem('user', JSON.stringify({ ...savedUser, name: updatedData.name }));
+      localStorage.setItem('user', JSON.stringify({ 
+          ...savedUser, 
+          name: updatedData.name,
+          // If backend returns the new image URL, save it too
+          // profilePic: updatedData.profilePic 
+      }));
 
       setIsEditing(false);
       alert("Profile updated successfully!");
@@ -100,17 +141,39 @@ const UserProfile = () => {
             
             {/* 1. Profile Picture Area (Overlapping Banner) */}
             <div className="relative -mt-16 mb-6 flex justify-between items-end">
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full border-4 border-white bg-indigo-100 flex items-center justify-center shadow-md">
-                   {/* Generate Initials if no image */}
-                   <span className="text-4xl font-bold text-indigo-600">
-                     {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                   </span>
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-full border-4 border-white bg-indigo-100 flex items-center justify-center shadow-md overflow-hidden">
+                    {/* Show Preview if available, else Initials */}
+                    {imagePreview ? (
+                        <img 
+                            src={imagePreview} 
+                            alt="Profile" 
+                            className="w-full h-full object-cover" 
+                        />
+                    ) : (
+                        <span className="text-4xl font-bold text-indigo-600">
+                          {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                        </span>
+                    )}
                 </div>
-                {/* Fake Edit Photo Button (Visual Only for now) */}
+
+                {/* Hidden File Input */}
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleImageChange} 
+                    className="hidden" 
+                    accept="image/*"
+                />
+
+                {/* Edit Photo Button */}
                 {isEditing && (
-                  <button className="absolute bottom-0 right-0 bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition">
-                    <FaCamera size={14} />
+                  <button 
+                    onClick={triggerFileInput}
+                    className="absolute bottom-0 right-0 bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition shadow-lg z-10"
+                    title="Upload Photo"
+                  >
+                    <FaCamera size={16} />
                   </button>
                 )}
               </div>
@@ -120,7 +183,12 @@ const UserProfile = () => {
                 {isEditing ? (
                   <div className="flex space-x-3">
                     <button 
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => {
+                          setIsEditing(false);
+                          // Reset preview to original if canceled
+                          setImagePreview(user.profilePic || null);
+                          setImageFile(null);
+                      }}
                       className="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
                     >
                       <FaTimes className="mr-2" /> Cancel
@@ -164,7 +232,7 @@ const UserProfile = () => {
                 </div>
               </div>
 
-              {/* Email (Read Only - usually shouldn't change email easily) */}
+              {/* Email (Read Only) */}
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
                 <div className="relative">

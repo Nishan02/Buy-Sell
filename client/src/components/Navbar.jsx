@@ -186,7 +186,7 @@ const Navbar = () => {
                       <Link to="/profile" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-indigo-600 transition-colors">
                         <FaUser className="mr-3 text-gray-400 group-hover:text-indigo-500" /> Your Profile
                       </Link>
-                      <Link to="/mylistings" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-indigo-600 transition-colors">
+                      <Link to="/my-listings" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-indigo-600 transition-colors">
                         <FaList className="mr-3 text-gray-400 group-hover:text-indigo-500" /> My Listings
                       </Link>
                       
