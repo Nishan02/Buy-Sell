@@ -11,6 +11,7 @@ import UserProfile from "./pages/UserProfile";
 import Settings from "./pages/Settings";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import Wishlist from "./pages/Wishlist";
 
 
 function App() {
@@ -80,8 +81,15 @@ function App() {
           }
         />
         
-        
+        <Route 
+          path="/wishlist" 
+          element={ 
+            <ProtectedRoute>
+               <Wishlist /> 
+            </ProtectedRoute> } 
+        />
 
+        
         {/* 404 Page */}
         <Route path="*" element={<h1 className="text-center mt-20">404 Not Found</h1>} />
       </Routes>

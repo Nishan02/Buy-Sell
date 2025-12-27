@@ -1,7 +1,18 @@
-// src/components/Navbar.jsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaSearch, FaUserCircle, FaStore, FaHistory, FaTrashAlt } from 'react-icons/fa';
+import { 
+  FaSearch, 
+  FaUserCircle, 
+  FaStore, 
+  FaHistory, 
+  FaTrashAlt, 
+  FaHeart, 
+  FaPlus, 
+  FaSignOutAlt, 
+  FaUser, 
+  FaList,
+  FaBullhorn 
+} from 'react-icons/fa';
 
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -11,6 +22,7 @@ const Navbar = () => {
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user'));
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -21,7 +33,6 @@ const Navbar = () => {
   const handleSearch = (e) => {
     if (e) e.preventDefault();
     if (searchTerm.trim()) {
-      // 1. Update History in LocalStorage
       const existingHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
       const updatedHistory = [
         searchTerm.trim(),
@@ -30,9 +41,7 @@ const Navbar = () => {
 
       localStorage.setItem('searchHistory', JSON.stringify(updatedHistory));
       setHistory(updatedHistory);
-
-      // 2. Navigate
-      navigate(`/?search=${searchTerm}`);
+      navigate(`/?search=${searchTerm.trim()}`);
       setShowHistory(false);
     }
   };
@@ -43,118 +52,166 @@ const Navbar = () => {
     setShowHistory(true);
   };
 
-  const clearHistory = (e) => {
-    e.stopPropagation();
-    localStorage.removeItem('searchHistory');
-    setHistory([]);
-  };
-
-  const isLoggedIn = !!token;
+  // Helper component for Nav Items to ensure consistent styling
+  const NavItem = ({ to, icon: Icon, label, className = "" }) => (
+    <Link 
+      to={to} 
+      className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 group ${className}`}
+    >
+       <Icon className="text-lg group-hover:scale-110 transition-transform text-gray-400 group-hover:text-indigo-600" />
+       <span className="hidden xl:block">{label}</span>
+    </Link>
+  );
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      {/* 1. Container: Increased width and padding for better spacing */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 max-w-[95rem] mx-auto">
+        <div className="flex justify-between h-20 items-center gap-4">
 
-          {/* 1. TOP LEFT: App Icon & Name */}
-          <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600">
-              <FaStore className="h-8 w-8 mr-2" />
-              Campus<span className="text-gray-800">Mart</span>
-            </Link>
+          {/* 2. LEFT: Logo */}
+          <div className="flex-shrink-0 flex items-center cursor-pointer min-w-fit" onClick={() => navigate('/')}>
+            <div className="flex items-center text-2xl font-black text-indigo-600 tracking-tight">
+              <FaStore className="h-8 w-8 mr-2.5" />
+              <span>Campus<span className="text-gray-900">Mart</span></span>
+            </div>
           </div>
 
-          {/* 2. MIDDLE: Search Bar with History Dropdown */}
-          <div className="flex-1 max-w-2xl mx-4 lg:mx-8 hidden md:block relative">
-            <form onSubmit={handleSearch}>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="text-gray-400" />
+          {/* 3. MIDDLE: Search Bar (Wider & Centered) */}
+          <div className="flex-1 max-w-3xl px-4 lg:px-12 hidden md:block relative">
+            <form onSubmit={handleSearch} className="w-full">
+              <div className="relative group">
+                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FaSearch className="text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
                 </span>
                 <input
                   type="text"
                   value={searchTerm}
                   onFocus={handleFocus}
                   onBlur={() => setTimeout(() => setShowHistory(false), 200)}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    navigate(`/?search=${e.target.value}`);
-                  }}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-full leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm"
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-full leading-5 bg-gray-50 text-gray-900 placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm hover:bg-white hover:shadow-md"
                   placeholder="Search for books, cycles, electronics..."
                 />
               </div>
             </form>
 
             {/* History Dropdown */}
-            {/* History Dropdown */}
-{showHistory && history.length > 0 && (
-  <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 z-[60] overflow-hidden">
-    
-    {/* History Items */}
-    <div className="py-1">
-      {history.map((term, index) => (
-        <button
-          key={index}
-          onMouseDown={() => {
-            setSearchTerm(term);
-            navigate(`/?search=${term}`);
-          }}
-          className="w-full text-left px-4 py-3 text-sm text-gray-600 hover:bg-indigo-50 flex items-center transition"
-        >
-          <FaHistory className="mr-3 text-gray-300 text-xs" />
-          {term}
-        </button>
-      ))}
-    </div>
-
-    {/* Small Clear Button on the Left */}
-    <div className="bg-gray-50 px-4 py-2 border-t border-gray-100 flex justify-start">
-      <button 
-        onMouseDown={(e) => {
-          e.preventDefault(); 
-          localStorage.removeItem('searchHistory');
-          setHistory([]);
-        }}
-        className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition flex items-center"
-      >
-        <FaTrashAlt className="mr-1" /> Clear History
-      </button>
-    </div>
-  </div>
-)}
+            {showHistory && history.length > 0 && (
+              <div className="absolute top-full left-4 right-4 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 z-[60] overflow-hidden">
+                <div className="py-2">
+                  <div className="px-4 py-1 text-xs font-bold text-gray-400 uppercase tracking-wider">Recent Searches</div>
+                  {history.map((term, index) => (
+                    <button
+                      key={index}
+                      onMouseDown={() => {
+                        setSearchTerm(term);
+                        navigate(`/?search=${term}`);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 flex items-center transition-colors font-medium"
+                    >
+                      <FaHistory className="mr-3 text-indigo-300" />
+                      {term}
+                    </button>
+                  ))}
+                </div>
+                <div className="bg-gray-50 px-4 py-2 border-t border-gray-100 flex justify-end">
+                  <button 
+                    onMouseDown={(e) => {
+                      e.preventDefault(); 
+                      localStorage.removeItem('searchHistory');
+                      setHistory([]);
+                    }}
+                    className="text-xs font-bold text-red-500 hover:text-red-700 transition flex items-center px-2 py-1 rounded hover:bg-red-50"
+                  >
+                    <FaTrashAlt className="mr-1.5" /> Clear History
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 3. TOP RIGHT: Account Section */}
-          <div className="flex items-center">
-            {isLoggedIn ? (
-              <div className="relative ml-3">
+          {/* 4. RIGHT: Actions */}
+          <div className="flex items-center gap-2 lg:gap-4 flex-shrink-0">
+            
+            {/* Wishlist */}
+            <NavItem to="/wishlist" icon={FaHeart} label="Wishlist" />
+
+            {/* Lost & Found */}
+            <NavItem to="/lost-and-found" icon={FaBullhorn} label="Lost & Found" />
+
+            {/* Sell Button (Solid Style) */}
+            <Link
+              to="/sell"
+              className="hidden sm:inline-flex items-center gap-2 px-6 py-2.5 border border-transparent text-sm font-bold rounded-full shadow-lg text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:-translate-y-0.5"
+            >
+              <FaPlus className="text-xs" />
+              Sell Item
+            </Link>
+
+            {/* Divider */}
+            <div className="h-8 w-px bg-gray-200 mx-2 hidden lg:block"></div>
+
+            {/* Profile Dropdown (Stylish Button) */}
+            {token ? (
+              <div className="relative">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300 transition"
+                  className="flex items-center gap-3 px-2 py-1.5 rounded-full hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
-                  <FaUserCircle className="h-9 w-9 text-gray-600" />
+                   {user && user.profilePic ? (
+                      <img className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-sm" src={user.profilePic} alt="" />
+                  ) : (
+                      <FaUserCircle className="h-9 w-9 text-gray-400" />
+                  )}
+                  
+                  <div className="hidden lg:flex flex-col items-start mr-1">
+                      <span className="text-sm font-bold text-gray-700 leading-none">{user?.name?.split(' ')[0] || 'User'}</span>
+                      <span className="text-[10px] font-medium text-gray-400 leading-none mt-0.5">My Profile</span>
+                  </div>
                 </button>
 
                 {isDropdownOpen && (
                   <div
-                    className="origin-top-right absolute right-0 mt-2 w-48 rounded-xl shadow-xl bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-hidden"
+                    className="origin-top-right absolute right-0 mt-3 w-64 rounded-2xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-hidden transform transition-all"
                     onMouseLeave={() => setIsDropdownOpen(false)}
                   >
-                    <div className="py-1">
-                      <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Your Profile</Link>
-                      <Link to="/my-listings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">My Listings</Link>
-                      <Link to="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</Link>
-                      <hr className="my-1 border-gray-100" />
-                      <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 font-medium">Sign out</button>
+                    <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-br from-indigo-50 to-white">
+                        <p className="text-xs text-indigo-500 uppercase tracking-wider font-bold mb-1">Signed in as</p>
+                        <p className="text-sm font-black text-gray-900 truncate">{user?.name || 'User'}</p>
+                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                    </div>
+
+                    <div className="py-2">
+                      <Link to="/profile" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-indigo-600 transition-colors">
+                        <FaUser className="mr-3 text-gray-400 group-hover:text-indigo-500" /> Your Profile
+                      </Link>
+                      <Link to="/mylistings" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-indigo-600 transition-colors">
+                        <FaList className="mr-3 text-gray-400 group-hover:text-indigo-500" /> My Listings
+                      </Link>
+                      
+                      {/* Mobile Links */}
+                      <div className="lg:hidden border-t border-gray-100 my-1">
+                          <Link to="/wishlist" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-pink-600">
+                            <FaHeart className="mr-3 text-gray-400 group-hover:text-pink-500" /> Wishlist
+                          </Link>
+                          <Link to="/lost-and-found" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-indigo-600">
+                            <FaBullhorn className="mr-3 text-gray-400 group-hover:text-indigo-500" /> Lost & Found
+                          </Link>
+                      </div>
+
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button onClick={handleLogout} className="w-full text-left group flex items-center px-6 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                        <FaSignOutAlt className="mr-3 text-red-400 group-hover:text-red-500" /> Sign out
+                      </button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex space-x-3">
-                <Link to="/login" className="text-gray-700 font-medium hover:text-indigo-600 px-3 py-2 text-sm">Log in</Link>
-                <Link to="/signup" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md">Sign up</Link>
+              <div className="flex items-center gap-3">
+                <Link to="/login" className="text-gray-600 font-bold hover:text-indigo-600 px-4 py-2 text-sm transition-colors">Log in</Link>
+                <Link to="/signup" className="bg-indigo-600 text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-indigo-700 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">Sign up</Link>
               </div>
             )}
           </div>
@@ -162,7 +219,7 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Search Bar */}
-      <div className="md:hidden px-4 pb-3">
+      <div className="md:hidden px-4 pb-4 border-t border-gray-100 pt-3">
         <form onSubmit={handleSearch} className="relative">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FaSearch className="text-gray-400" />
@@ -170,11 +227,8 @@ const Navbar = () => {
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              navigate(`/?search=${e.target.value}`);
-            }}
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-full leading-5 bg-gray-50 sm:text-sm"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-sm"
             placeholder="Search..."
           />
         </form>
