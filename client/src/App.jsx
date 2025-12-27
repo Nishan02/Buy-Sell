@@ -7,10 +7,8 @@ import ItemDetails from "./pages/ItemDetails";
 import MyListings from "./pages/MyListings";
 import EditItem from "./pages/EditItem";
 import SellItem from "./pages/SellItem";
+import UserProfile from "./pages/UserProfile";
 
-// --- PLACEHOLDERS (Temporary components until you create real files) ---
-//const SellItem = () => <div className="p-10 text-2xl font-bold">Sell Item Page (Coming Soon)</div>;
-const UserProfile = () => <div className="p-10 text-2xl font-bold">User Profile Page (Coming Soon)</div>;
 
 function App() {
   return (
@@ -58,6 +56,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/edit-item/:id"
+          element={
+            <ProtectedRoute>
+              <EditItem />
+            </ProtectedRoute>
+          }
+        />
+        
         
 
         {/* 404 Page */}

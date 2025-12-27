@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import API from '../api/axios';
-import { FaTrash, FaEdit, FaCheckCircle, FaRegCircle } from 'react-icons/fa';
+import { FaTrash, FaCheckCircle, FaTimesCircle, FaBoxOpen } from 'react-icons/fa';
 
 const MyListings = () => {
   const [items, setItems] = useState([]);
@@ -11,9 +10,12 @@ const MyListings = () => {
   useEffect(() => {
     const fetchMyItems = async () => {
       try {
-        const res = await API.get('/items/my-listings');
-        // Handle both possible response formats
-        setItems(res.data.items || res.data);
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:5000/api/items/my-listings', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setItems(Array.isArray(data) ? data : data.items || []);
       } catch (err) {
         console.error("Error fetching listings", err);
       } finally {
@@ -23,144 +25,140 @@ const MyListings = () => {
     fetchMyItems();
   }, []);
 
-  const handleToggleSold = async (id, currentStatus) => {
+  // FIX 1: Add e.preventDefault() to stop redirection
+  const handleToggleSold = async (e, id, currentStatus) => {
+    e.preventDefault(); // <--- STOPS THE CLICK FROM GOING TO THE LINK
     try {
-      await API.patch(`/items/${id}/status`, { isSold: !currentStatus });
-      setItems(items.map(item => item._id === id ? { ...item, isSold: !currentStatus } : item));
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/items/${id}/status`, {
+        method: 'PATCH',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ isSold: !currentStatus })
+      });
+
+      if (res.ok) {
+          setItems(items.map(item => item._id === id ? { ...item, isSold: !currentStatus } : item));
+      }
     } catch (err) {
       alert("Failed to update status");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Delete this listing permanently?")) {
+  const handleDelete = async (e, id) => {
+    e.preventDefault(); // <--- STOPS THE CLICK FROM GOING TO THE LINK
+    if (window.confirm("Are you sure you want to remove this item permanently?")) {
       try {
-        await API.delete(`/items/${id}`);
-        setItems(items.filter(item => item._id !== id));
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:5000/api/items/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            setItems(items.filter(item => item._id !== id));
+        }
       } catch (err) {
         alert("Failed to delete item");
       }
     }
   };
 
-  if (loading) return <div className="text-center py-20 font-medium">Loading your items...</div>;
+  if (loading) return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 font-sans">
       <Navbar />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage and track your campus sales</p>
-          </div>
-          <Link to="/sell" className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-md text-center">
-            + List New Item
-          </Link>
+        <div className="mb-8 border-b border-gray-200 pb-5">
+          <h1 className="text-3xl font-extrabold text-gray-900">My Listings</h1>
+          <p className="text-gray-500 mt-2">Manage your active ads and sold items.</p>
         </div>
 
         {items.length === 0 ? (
-          <div className="bg-white p-12 text-center rounded-2xl shadow-sm border border-gray-100">
-            <p className="text-gray-500 text-lg">You haven't listed any items yet.</p>
-            <Link to="/sell" className="text-indigo-600 font-semibold hover:underline mt-2 inline-block">Start selling now</Link>
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl shadow-sm border-2 border-dashed border-gray-200">
+            <div className="bg-indigo-50 p-4 rounded-full mb-4">
+                <FaBoxOpen className="text-indigo-400 text-4xl" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">No items listed yet</h3>
+            <p className="text-gray-500 mt-2 text-center max-w-sm">
+                Once you sell an item using the "Sell" page, it will appear here.
+            </p>
           </div>
         ) : (
-          <>
-            {/* 1. DESKTOP VIEW: Visible on Tablets and Desktops */}
-            <div className="hidden md:block bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Item</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Price</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {items.map((item) => (
-                    <tr key={item._id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <img className="h-14 w-14 rounded-lg object-cover border" src={item.images[0]} alt="" />
-                          <div className="ml-4">
-                            <Link to={`/item/${item._id}`} className="text-sm font-bold text-gray-900 hover:text-indigo-600 transition">
-                              {item.title}
-                            </Link>
-                            <div className="text-xs text-gray-500">{item.category}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                        ₹{item.price.toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button 
-                          onClick={() => handleToggleSold(item._id, item.isSold)}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${
-                            item.isSold ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'
-                          }`}
-                        >
-                          {item.isSold ? <FaCheckCircle className="mr-1.5"/> : <FaRegCircle className="mr-1.5"/>}
-                          {item.isSold ? 'Sold' : 'Available'}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm font-medium">
-                        <div className="flex justify-end space-x-3">
-                          <Link to={`/edit-item/${item._id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2.5 rounded-lg transition" title="Edit Item">
-                            <FaEdit size={16} />
-                          </Link>
-                          <button onClick={() => handleDelete(item._id)} className="text-red-600 hover:text-red-900 bg-red-50 p-2.5 rounded-lg transition" title="Delete Item">
-                            <FaTrash size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {items.map((item) => (
+              <div 
+                key={item._id} 
+                className={`group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col ${item.isSold ? 'opacity-75' : ''}`}
+              >
+                {/* View Details Link (Background Overlay) */}
+                <Link to={`/edit-item/${item._id}`} className="absolute inset-0 z-0" title="Edit Item" />
 
-            {/* 2. MOBILE VIEW: Visible on phones only */}
-            <div className="md:hidden space-y-4">
-              {items.map((item) => (
-                <div key={item._id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <img className="h-20 w-20 rounded-xl object-cover border" src={item.images[0]} alt="" />
-                      <div className="ml-4">
-                        <h3 className="text-base font-bold text-gray-900 leading-tight">{item.title}</h3>
-                        <p className="text-indigo-600 font-black text-lg">₹{item.price.toLocaleString('en-IN')}</p>
-                        <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{item.category}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 gap-3">
-                    <button 
-                      onClick={() => handleToggleSold(item._id, item.isSold)}
-                      className={`flex-1 flex items-center justify-center py-2.5 rounded-xl text-xs font-bold border transition ${
-                        item.isSold ? 'bg-red-50 text-red-700 border-red-100' : 'bg-green-50 text-green-700 border-green-100'
-                      }`}
-                    >
-                      {item.isSold ? 'Mark Available' : 'Mark Sold'}
-                    </button>
-                    
-                    <div className="flex space-x-2">
-                      <Link to={`/edit-item/${item._id}`} className="p-3 text-indigo-600 bg-indigo-50 rounded-xl">
-                        <FaEdit size={18} />
-                      </Link>
-                      <button onClick={() => handleDelete(item._id)} className="p-3 text-red-600 bg-red-50 rounded-xl">
-                        <FaTrash size={18} />
-                      </button>
-                    </div>
-                  </div>
+                <div className="relative h-48 w-full bg-gray-200 overflow-hidden pointer-events-none">
+                   <img 
+                    src={item.image || (item.images && item.images[0]) || 'https://via.placeholder.com/300'} 
+                    alt={item.title} 
+                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                   />
+                   <div className="absolute top-3 right-3">
+                       <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm uppercase tracking-wide ${
+                           item.isSold ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+                       }`}>
+                           {item.isSold ? 'Sold' : 'Active'}
+                       </span>
+                   </div>
                 </div>
-              ))}
-            </div>
-          </>
+
+                <div className="p-5 flex-1 flex flex-col relative z-10 pointer-events-none">
+                    <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{item.title}</h3>
+                                <p className="text-xs text-gray-500 uppercase font-semibold mt-1">{item.category}</p>
+                            </div>
+                            <p className="text-lg font-bold text-indigo-600">₹{item.price}</p>
+                        </div>
+                         <div className="mt-4 flex items-center text-xs text-gray-400">
+                             <span>Posted on {new Date(item.createdAt || Date.now()).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+
+                    {/* FIX 2: Added 'pointer-events-auto' so buttons work */}
+                    <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3 pointer-events-auto">
+                        <button 
+                            onClick={(e) => handleToggleSold(e, item._id, item.isSold)} // Pass 'e'
+                            className={`flex items-center justify-center px-3 py-2 rounded-lg text-sm font-semibold transition-colors z-20 relative ${
+                                item.isSold 
+                                ? 'bg-green-50 text-green-700 hover:bg-green-100' 
+                                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                            }`}
+                        >
+                            {item.isSold ? (
+                                <><FaCheckCircle className="mr-2"/> Repost</>
+                            ) : (
+                                <><FaTimesCircle className="mr-2"/> Mark Sold</>
+                            )}
+                        </button>
+
+                        <button 
+                            onClick={(e) => handleDelete(e, item._id)} // Pass 'e'
+                            className="flex items-center justify-center px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors z-20 relative"
+                        >
+                            <FaTrash className="mr-2"/> Delete
+                        </button>
+                    </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
