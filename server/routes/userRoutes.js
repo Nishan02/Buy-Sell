@@ -1,11 +1,22 @@
 import express from 'express';
-const router = express.Router();
-import { getUserProfile, updateUserProfile } from '../controllers/userController.js';
+import { 
+    getUserProfile, 
+    updateUserProfile, 
+    toggleWishlist, 
+    getWishlist 
+} from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
-// Both routes are protected because you must be logged in to see/edit your profile
+const router = express.Router();
+
+// --- Profile Routes ---
 router.route('/profile')
     .get(protect, getUserProfile)
     .put(protect, updateUserProfile);
+
+// --- Wishlist Routes ---
+router.route('/wishlist')
+    .post(protect, toggleWishlist) // Add or Remove item
+    .get(protect, getWishlist);    // View all items
 
 export default router;

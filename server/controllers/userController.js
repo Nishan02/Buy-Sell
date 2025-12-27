@@ -83,3 +83,37 @@ export const deleteAccount = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// server/controllers/userController.js
+
+// Toggle Wishlist (Add if not there, Remove if it is)
+export const toggleWishlist = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const itemId = req.body.itemId;
+
+        if (user.wishlist.includes(itemId)) {
+            // Remove
+            user.wishlist = user.wishlist.filter(id => id.toString() !== itemId);
+            await user.save();
+            res.status(200).json({ message: 'Removed from wishlist', wishlist: user.wishlist });
+        } else {
+            // Add
+            user.wishlist.push(itemId);
+            await user.save();
+            res.status(200).json({ message: 'Added to wishlist', wishlist: user.wishlist });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Get User's Wishlist
+export const getWishlist = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).populate('wishlist');
+        res.status(200).json(user.wishlist);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

@@ -18,12 +18,19 @@ const userSchema = new mongoose.Schema({
     // --- VERIFICATION FIELDS (Standardized) ---
     isVerified: { type: Boolean, default: false },
     otp: { type: String },          // Use this for the 6-digit code
-    otpExpires: { type: Date },     // Use this to check expiry (optional but recommended)
+    otpExpires: { type: Date },     // Use this to check expiry
     // ------------------------------------------
 
     // Password Reset Fields
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+
+    // --- NEW: WISHLIST FIELD ---
+    // Stores an array of Item IDs
+    wishlist: [{ 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Item' 
+    }],
 
 }, { timestamps: true });
 
