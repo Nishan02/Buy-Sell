@@ -7,7 +7,7 @@ const router = express.Router();
 
 // 1. Post a new item (Protected: User must be logged in)
 // 'image' is the name of the field we will use in Postman
-router.post('/', protect, upload.single('image'), createItem);
+router.post('/', protect, upload.array('images', 3), createItem);
 
 // 2. Get all items (Public: Anyone can browse the marketplace)
 router.get('/', getItems);
@@ -19,7 +19,7 @@ router.get('/my-listings', protect, getMyListings);
 
 router.get('/:id', getItemById);
 
-router.put('/:id', protect, upload.single('image'), updateItem);
+router.put('/:id', protect, upload.array('images', 3), updateItem);
 
 // Delete an item
 router.delete('/:id', protect, deleteItem);

@@ -95,7 +95,7 @@ const Home = () => {
               <div className="flex-1 overflow-hidden">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Shop by Category</h3>
                 <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-                  {['Cycle', 'Cooler', 'Books', 'Electronics', 'Other'].map((cat) => (
+                  {['Cycles', 'Books & Notes', 'Electronics', 'Hostel Essentials', 'Stationery', 'Other'].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat === selectedCategory ? '' : cat)}

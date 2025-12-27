@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FaCamera, FaTimesCircle } from 'react-icons/fa';
 
 const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
   const [formData, setFormData] = useState({
@@ -9,21 +10,23 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
     contactNumber: ''
   });
 
-  const [imageFile, setImageFile] = useState(null);
-  const [preview, setPreview] = useState("");
+  // Now handling arrays for multiple images
+  const [imageFiles, setImageFiles] = useState([]); 
+  const [previews, setPreviews] = useState([]); 
   const [phoneError, setPhoneError] = useState('');
 
   useEffect(() => {
     if (initialData) {
-      // If editing, we strip the '91' prefix so the user sees their 10-digit number
       const displayData = { ...initialData };
+      // Strip '91' for the UI if it exists
       if (displayData.contactNumber && displayData.contactNumber.startsWith('91')) {
         displayData.contactNumber = displayData.contactNumber.slice(2);
       }
       setFormData(displayData);
       
-      if (initialData.images && initialData.images[0]) {
-        setPreview(initialData.images[0]);
+      // Load existing images if editing
+      if (initialData.images && initialData.images.length > 0) {
+        setPreviews(initialData.images);
       }
     }
   }, [initialData]);
@@ -40,17 +43,35 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    
-    // Call validation here
     if (name === 'contactNumber') {
       validatePhone(value);
     }
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    setImageFile(file);
-    setPreview(URL.createObjectURL(file));
+    const files = Array.from(e.target.files);
+    
+    // Check if adding these files exceeds the limit of 3
+    if (imageFiles.length + files.length > 3) {
+      alert("You can only upload a maximum of 3 images.");
+      return;
+    }
+
+    // Add new files to the state
+    const updatedFiles = [...imageFiles, ...files];
+    setImageFiles(updatedFiles);
+
+    // Generate previews
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviews([...previews, ...newPreviews]);
+  };
+
+  const removeImage = (index) => {
+    // Remove from both files and previews
+    const updatedFiles = imageFiles.filter((_, i) => i !== index);
+    const updatedPreviews = previews.filter((_, i) => i !== index);
+    setImageFiles(updatedFiles);
+    setPreviews(updatedPreviews);
   };
 
   const handleSubmit = (e) => {
@@ -62,6 +83,11 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
         return;
     }
 
+    if (previews.length === 0) {
+        alert("Please upload at least one image.");
+        return;
+    }
+
     const finalPhoneNumber = `91${rawNumber}`;
     const data = new FormData();
     data.append('title', formData.title);
@@ -69,14 +95,20 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
     data.append('description', formData.description);
     data.append('category', formData.category);
     data.append('contactNumber', finalPhoneNumber);
-    if (imageFile) data.append('image', imageFile);
+
+    const existingUrls = previews.filter(p => typeof p === 'string' && p.startsWith('http'));
+    data.append('existingImages', JSON.stringify(existingUrls));
+
+    // Append each image to 'images' (Backend should use upload.array('images', 3))
+    imageFiles.forEach((file) => {
+      data.append('images', file);
+    });
 
     onSubmit(data);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-xl shadow-md border border-gray-100">
-      {/* Title */}
       <div>
         <label className="block text-sm font-semibold text-gray-700">Product Title</label>
         <input
@@ -91,7 +123,6 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* Price */}
         <div>
           <label className="block text-sm font-semibold text-gray-700">Price (₹)</label>
           <input
@@ -103,7 +134,6 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
             className="mt-1 block w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
           />
         </div>
-        {/* Category */}
         <div>
           <label className="block text-sm font-semibold text-gray-700">Category</label>
           <select
@@ -112,14 +142,13 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
             onChange={handleChange}
             className="mt-1 block w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
           >
-            {['Cycle', 'Cooler', 'Books', 'Electronics', 'Other'].map(cat => (
+            {['Cycles','Books & Notes', 'Electronics', 'Hostel Essentials','Stationery', 'Other'].map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Description */}
       <div>
         <label className="block text-sm font-semibold text-gray-700">Description</label>
         <textarea
@@ -129,11 +158,10 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
           value={formData.description}
           onChange={handleChange}
           className="mt-1 block w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
-          placeholder="Tell buyers about the condition, age, etc."
+          placeholder="Condition, age, etc."
         />
       </div>
 
-      {/* WhatsApp Number with +91 prefix */}
       <div>
         <label className="block text-sm font-semibold text-gray-700">WhatsApp Contact Number</label>
         <div className="mt-1 relative rounded-lg shadow-sm">
@@ -156,19 +184,36 @@ const ItemForm = ({ initialData, onSubmit, buttonText, loading }) => {
         {phoneError && <p className="mt-1 text-xs text-red-600 font-medium italic">{phoneError}</p>}
       </div>
 
-      {/* Image Upload */}
+      {/* Multi-Image Section */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700">Product Image</label>
-        <div className="mt-2 flex items-center space-x-4">
-          {preview && (
-            <img src={preview} alt="Preview" className="h-24 w-24 object-cover rounded-lg border shadow-sm" />
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Product Images (Max 3)</label>
+        <div className="flex flex-wrap gap-4">
+          {previews.map((src, index) => (
+            <div key={index} className="relative h-24 w-24 rounded-lg overflow-hidden border shadow-sm group">
+              <img src={src} alt="preview" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => removeImage(index)}
+                className="absolute top-1 right-1 text-red-500 bg-white rounded-full hover:bg-red-50"
+              >
+                <FaTimesCircle size={18} />
+              </button>
+            </div>
+          ))}
+
+          {previews.length < 3 && (
+            <label className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed border-indigo-200 rounded-lg bg-indigo-50 text-indigo-600 cursor-pointer hover:bg-indigo-100 transition">
+              <FaCamera size={20} />
+              <span className="text-[10px] font-bold mt-1">ADD</span>
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                onChange={handleImageChange} 
+                className="hidden" 
+              />
+            </label>
           )}
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={handleImageChange}
-            className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-          />
         </div>
       </div>
 

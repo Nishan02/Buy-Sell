@@ -6,7 +6,6 @@ const itemSchema = new mongoose.Schema({
     price: { type: Number, required: true },
     category: { 
         type: String, 
-        enum: ['Cycle', 'Cooler', 'Books', 'Electronics', 'Other'], 
         required: true 
     },
     images: [{ type: String }], // Array of Cloudinary URLs

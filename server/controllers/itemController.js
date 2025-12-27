@@ -1,13 +1,18 @@
 import Item from '../models/Item.js';
 
+
+
 export const createItem = async (req, res) => {
-    try { 
+    try {
         const { title, description, price, category, contactNumber } = req.body;
 
-        // Check if an image was actually uploaded
-        if (!req.file) {
-            return res.status(400).json({ message: "Please upload an image of the item" });
+        // Check if images were actually uploaded (req.files is used for arrays)
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ message: "Please upload at least one image of the item" });
         }
+
+        // Map through the array of files to get Cloudinary URLs
+        const imageUrls = req.files.map(file => file.path);
 
         const newItem = await Item.create({
             title,
@@ -15,18 +20,67 @@ export const createItem = async (req, res) => {
             price: Number(price),
             category,
             contactNumber,
-            images: [req.file.path], // req.file.path is the Cloudinary URL
-            seller: req.user.id      // Taken from our 'protect' middleware
+            images: imageUrls, // Now storing an array of strings
+            seller: req.user.id
         });
 
         res.status(201).json(newItem);
     } catch (error) {
-       console.error("CRASH ERROR:", error); 
+        console.error("CREATE ERROR:", error);
         res.status(500).json({ 
             message: "Server Error", 
-            error: error.message // Sends the actual error back to Postman
+            error: error.message 
         });
-       
+    }
+};
+
+export const updateItem = async (req, res) => {
+    try {
+        const item = await Item.findById(req.params.id);
+        if (!item) return res.status(404).json({ message: "Item not found" });
+
+        // Authorization check
+        if (item.seller.toString() !== req.user.id) {
+            return res.status(401).json({ message: "Not authorized to update this item" });
+        }
+
+        // 1. Get the list of images the user chose to KEEP
+        let imagesToKeep = [];
+        if (req.body.existingImages) {
+            // existingImages comes as a stringified array from the frontend
+            imagesToKeep = JSON.parse(req.body.existingImages);
+        }
+
+        // 2. Get the URLs of NEWLY uploaded images from Multer/Cloudinary
+        const newImageUrls = req.files ? req.files.map(file => file.path) : [];
+
+        // 3. Merge them into one final array
+        const finalImages = [...imagesToKeep, ...newImageUrls];
+
+        // Validation: Don't allow a listing with zero photos
+        if (finalImages.length === 0) {
+            return res.status(400).json({ message: "At least one image is required" });
+        }
+
+        const updateData = {
+            title: req.body.title,
+            price: Number(req.body.price),
+            description: req.body.description,
+            category: req.body.category,
+            contactNumber: req.body.contactNumber,
+            images: finalImages // This now contains both KEPT and NEW images
+        };
+
+        const updatedItem = await Item.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            { new: true }
+        );
+
+        res.status(200).json(updatedItem);
+    } catch (error) {
+        console.error("UPDATE ERROR:", error);
+        res.status(500).json({ message: "Server error during update" });
     }
 };
 
@@ -46,7 +100,18 @@ export const getItems = async (req, res) => {
         }
 
         // 2. Category Filter
-        if (category) query.category = category;
+        if (category) {
+        if (category === 'Other') {
+            // Define your standard categories here
+            const standardCategories = ['Cycles', 'Books & Notes', 'Electronics', 'Hostel Essentials', 'Stationery'];
+            
+            // Find items where category is NOT in the standard list
+            query.category = { $nin: standardCategories };
+        } else {
+            // Normal filtering for standard categories
+            query.category = category;
+        }
+        }
 
         // 3. Price Filter
         if (minPrice || maxPrice) {
@@ -147,35 +212,4 @@ export const toggleSoldStatus = async (req, res) => {
     }
 };
 
-export const updateItem = async (req, res) => {
-  try {
-    const item = await Item.findById(req.params.id);
-    if (!item) return res.status(404).json({ message: "Item not found" });
 
-    // 1. Build the update object from req.body (Multer populates this)
-    const updateData = {
-      title: req.body.title,
-      price: req.body.price,
-      description: req.body.description,
-      category: req.body.category,
-      contactNumber: req.body.contactNumber
-    };
-
-    // 2. Only update the image if a NEW file was actually uploaded
-    if (req.file) {
-      // Use req.file.path if using Cloudinary, or req.file.filename if local
-      updateData.images = [req.file.path || req.file.secure_url];
-    }
-
-    const updatedItem = await Item.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    );
-
-    res.status(200).json(updatedItem);
-  } catch (error) {
-    console.error("Update Error:", error);
-    res.status(500).json({ message: "Server error during update" });
-  }
-};
