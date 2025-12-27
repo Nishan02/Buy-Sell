@@ -32,11 +32,19 @@ export const updateUserProfile = async (req, res) => {
                 user.password = req.body.password; 
             }
 
-            // 3. Handle Image (Simplified)
-            // Since we used 'multer-storage-cloudinary', the file is ALREADY uploaded.
-            // req.file.path contains the secure Cloudinary URL.
-            if (req.file) {
-                user.profilePic = req.file.path; 
+            // 3. Handle Images (Updated for Multiple Files)
+            // 'upload.fields' puts files in 'req.files' (plural) as an object
+            if (req.files) {
+                // Check if Profile Pic was uploaded
+                if (req.files.profilePic) {
+                    // It comes as an array, so we take the first one [0]
+                    user.profilePic = req.files.profilePic[0].path; 
+                }
+
+                // Check if Cover Image was uploaded
+                if (req.files.coverImage) {
+                    user.coverImage = req.files.coverImage[0].path;
+                }
             }
 
             const updatedUser = await user.save();
@@ -47,7 +55,8 @@ export const updateUserProfile = async (req, res) => {
                 email: updatedUser.email,
                 phone: updatedUser.phone,
                 year: updatedUser.year,
-                profilePic: updatedUser.profilePic, 
+                profilePic: updatedUser.profilePic,
+                coverImage: updatedUser.coverImage, // <--- Return this to frontend
             });
         } else {
             res.status(404).json({ message: 'User not found' });

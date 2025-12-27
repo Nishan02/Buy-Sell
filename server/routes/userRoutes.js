@@ -20,7 +20,10 @@ const upload = multer({ storage });
 router.route('/profile')
     .get(protect, getUserProfile)
     // 3. The file uploads to Cloudinary HERE automatically
-    .put(protect, upload.single('profilePic'), updateUserProfile);
+     .put(protect, upload.fields([
+    { name: 'profilePic', maxCount: 1 },
+    { name: 'coverImage', maxCount: 1 }
+]), updateUserProfile);
 
 // --- Wishlist Routes ---
 router.route('/wishlist')

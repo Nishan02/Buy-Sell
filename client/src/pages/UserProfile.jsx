@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from '../components/Navbar';
-import { FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaEdit, FaSave, FaTimes, FaCamera, FaSpinner, FaCheck } from 'react-icons/fa';
-// 1. Import react-easy-crop
+import { FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaEdit, FaSave, FaTimes, FaCamera, FaSpinner, FaCheck, FaImage } from 'react-icons/fa';
 import Cropper from 'react-easy-crop';
 
-// --- UTILITY FUNCTION FOR CROPPING (Put this outside the component or in a separate utils file) ---
-// This function creates a new HTMLImageElement, draws it onto a canvas based on the 
-// crop coordinates, and returns the resulting cropped image as a Blob file.
+// --- UTILITY FUNCTION FOR CROPPING ---
 const createImage = (url) =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -21,11 +18,9 @@ async function getCroppedImg(imageSrc, pixelCrop) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
-  // Set canvas size to match the desired crop size
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
 
-  // Draw the cropped portion of the image onto the canvas
   ctx.drawImage(
     image,
     pixelCrop.x,
@@ -38,21 +33,17 @@ async function getCroppedImg(imageSrc, pixelCrop) {
     pixelCrop.height
   );
 
-  // As a Blob (file) to send to backend
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
         reject(new Error('Canvas is empty'));
         return;
       }
-      // Set a name for the file
       blob.name = 'croppedImage.jpeg';
       resolve(blob);
-    }, 'image/jpeg', 1); // quality 0 to 1
+    }, 'image/jpeg', 1);
   });
 }
-// -----------------------------------------------------------------------------------------------
-
 
 const UserProfile = () => {
   const [user, setUser] = useState({
@@ -60,29 +51,36 @@ const UserProfile = () => {
     email: '',
     phone: '',
     year: '',
-    profilePic: ''
+    profilePic: '',
+    coverImage: '' 
   });
 
-  // --- State for Image Handling & Cropping ---
-  const [imageFile, setImageFile] = useState(null); // The final file to send to DB
-  const [imagePreview, setImagePreview] = useState(null); // The main circular profile view
+  // --- Profile Pic State ---
+  const [imageFile, setImageFile] = useState(null); 
+  const [imagePreview, setImagePreview] = useState(null); 
   
-  // Cropper states
-  const [tempImageSrc, setTempImageSrc] = useState(null); // The raw image selected from input
+  // --- Cover Image State ---
+  const [coverFile, setCoverFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(null);
+  const coverInputRef = useRef(null);
+
+  // --- Shared Cropper State ---
+  const [tempImageSrc, setTempImageSrc] = useState(null); 
   const [showCropModal, setShowCropModal] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [isCropping, setIsCropping] = useState(false); // Loading state while generating crop
-  // -------------------------------------------
+  const [isCropping, setIsCropping] = useState(false);
   
+  // NEW: Track what we are cropping ('profile' or 'cover')
+  const [cropTarget, setCropTarget] = useState(null); 
+
   const fileInputRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch User Data
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -97,9 +95,12 @@ const UserProfile = () => {
           email: data.email || '',
           phone: data.phone || '',
           year: data.year || '',
-          profilePic: data.profilePic || ''
+          profilePic: data.profilePic || '',
+          coverImage: data.coverImage || ''
         });
         if (data.profilePic) setImagePreview(data.profilePic);
+        if (data.coverImage) setCoverPreview(data.coverImage);
+
       } catch (err) {
         setError(err.message);
       } finally {
@@ -111,40 +112,50 @@ const UserProfile = () => {
 
   const handleChange = (e) => setUser({ ...user, [e.target.name]: e.target.value });
 
-  // 1. Handle File Selection -> Open Modal with Raw Image
+  // --- 1. Select Profile Pic (Opens Modal) ---
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Reset cropper settings for new image
       setCrop({ x: 0, y: 0 });
       setZoom(1);
-      // Create URL for the raw image to feed into the cropper
       setTempImageSrc(URL.createObjectURL(file));
+      setCropTarget('profile'); // Tell modal we are editing Profile
       setShowCropModal(true);
       e.target.value = null; 
     }
   };
 
-  // Callback from Cropper when user stops dragging/zooming
+  // --- 2. Select Cover Image (Opens Modal) ---
+  const handleCoverChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setTempImageSrc(URL.createObjectURL(file));
+      setCropTarget('cover'); // Tell modal we are editing Cover
+      setShowCropModal(true);
+      e.target.value = null;
+    }
+  };
+
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
-
-  // 2. Generate the Cropped Image and Confirm
+  // --- 3. Confirm Crop (Handles both Profile and Cover) ---
   const showCroppedImage = useCallback(async () => {
     setIsCropping(true);
     try {
-      // Use the utility function to generate the blob based on coordinates
-      const croppedImageBlob = await getCroppedImg(
-        tempImageSrc,
-        croppedAreaPixels
-      );
+      const croppedImageBlob = await getCroppedImg(tempImageSrc, croppedAreaPixels);
+      const croppedUrl = URL.createObjectURL(croppedImageBlob);
 
-      // Create a preview URL for the main profile circle
-      setImagePreview(URL.createObjectURL(croppedImageBlob));
-      // Set the actual blob file to be sent to backend later
-      setImageFile(croppedImageBlob);
+      if (cropTarget === 'profile') {
+        setImagePreview(croppedUrl);
+        setImageFile(croppedImageBlob);
+      } else if (cropTarget === 'cover') {
+        setCoverPreview(croppedUrl);
+        setCoverFile(croppedImageBlob);
+      }
       
       setShowCropModal(false);
     } catch (e) {
@@ -153,18 +164,18 @@ const UserProfile = () => {
     } finally {
       setIsCropping(false);
     }
-  }, [tempImageSrc, croppedAreaPixels]);
+  }, [tempImageSrc, croppedAreaPixels, cropTarget]);
 
-
-  // 3. Cancel Image Selection
   const cancelImage = () => {
     setImageFile(null);
+    setCoverFile(null);
     setTempImageSrc(null);
     setZoom(1);
     setShowCropModal(false);
   };
 
   const triggerFileInput = () => fileInputRef.current.click();
+  const triggerCoverInput = () => coverInputRef.current.click();
 
   const handleSave = async () => {
     setSaving(true);
@@ -175,8 +186,8 @@ const UserProfile = () => {
       formData.append('phone', user.phone);
       formData.append('year', user.year);
       
-      // Append the CROPPED file Blob
       if (imageFile) formData.append('profilePic', imageFile);
+      if (coverFile) formData.append('coverImage', coverFile);
 
       const response = await fetch('http://localhost:5000/api/users/profile', {
         method: 'PUT',
@@ -196,9 +207,11 @@ const UserProfile = () => {
       }));
 
       if (updatedData.profilePic) setImagePreview(updatedData.profilePic);
+      if (updatedData.coverImage) setCoverPreview(updatedData.coverImage);
       
       setIsEditing(false);
       setImageFile(null);
+      setCoverFile(null);
       alert("Profile updated successfully!");
 
     } catch (err) {
@@ -217,14 +230,38 @@ const UserProfile = () => {
       <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden relative">
           
-          <div className="h-32 bg-indigo-600"></div>
+          {/* --- COVER IMAGE SECTION --- */}
+          <div className="relative h-48 bg-gray-300 group">
+             {coverPreview || user.coverImage ? (
+                <img 
+                  src={coverPreview || user.coverImage} 
+                  alt="Cover" 
+                  className="w-full h-full object-cover"
+                />
+             ) : (
+                <div className="w-full h-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
+             )}
+
+             {isEditing && (
+               <>
+                 <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
+                    <button 
+                      onClick={triggerCoverInput}
+                      className="bg-white/90 text-gray-800 px-4 py-2 rounded-full font-medium shadow-lg hover:bg-white flex items-center transform hover:scale-105 transition"
+                    >
+                      <FaImage className="mr-2" /> Change Cover
+                    </button>
+                 </div>
+                 <input type="file" ref={coverInputRef} onChange={handleCoverChange} className="hidden" accept="image/*" />
+               </>
+             )}
+          </div>
 
           <div className="px-8 pb-8">
-            
             {/* Profile Picture Section */}
             <div className="relative -mt-16 mb-6 flex justify-between items-end">
               <div className="relative group">
-                <div className="w-32 h-32 rounded-full border-4 border-white bg-indigo-100 flex items-center justify-center shadow-md overflow-hidden">
+                <div className="w-32 h-32 rounded-full border-4 border-white bg-indigo-100 flex items-center justify-center shadow-md overflow-hidden relative z-10">
                     {imagePreview ? (
                         <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
@@ -233,11 +270,9 @@ const UserProfile = () => {
                         </span>
                     )}
                 </div>
-
                 <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*"/>
-
                 {isEditing && (
-                  <button onClick={triggerFileInput} className="absolute bottom-0 right-0 bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition shadow-lg z-10" title="Upload Photo">
+                  <button onClick={triggerFileInput} className="absolute bottom-0 right-0 bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition shadow-lg z-20" title="Upload Photo">
                     <FaCamera size={16} />
                   </button>
                 )}
@@ -251,35 +286,29 @@ const UserProfile = () => {
                       onClick={() => {
                           setIsEditing(false);
                           setImagePreview(user.profilePic || null);
+                          setCoverPreview(user.coverImage || null);
                           setImageFile(null);
+                          setCoverFile(null);
                       }}
                       disabled={saving}
                       className="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
                     >
                       <FaTimes className="mr-2" /> Cancel
                     </button>
-                    
                     <button 
                       onClick={handleSave}
                       disabled={saving}
                       className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-md disabled:opacity-70 disabled:cursor-not-allowed min-w-[140px] justify-center"
                     >
                       {saving ? (
-                        <>
-                          <FaSpinner className="animate-spin mr-2" /> Saving...
-                        </>
+                        <><FaSpinner className="animate-spin mr-2" /> Saving...</>
                       ) : (
-                        <>
-                          <FaSave className="mr-2" /> Save Changes
-                        </>
+                        <><FaSave className="mr-2" /> Save Changes</>
                       )}
                     </button>
                   </div>
                 ) : (
-                  <button 
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition shadow-sm font-medium"
-                  >
+                  <button onClick={() => setIsEditing(true)} className="flex items-center px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition shadow-sm font-medium">
                     <FaEdit className="mr-2 text-indigo-500" /> Edit Profile
                   </button>
                 )}
@@ -288,7 +317,6 @@ const UserProfile = () => {
 
             {/* User Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
-               {/* ... (This section remains exactly the same as before) ... */}
                <div className="col-span-1 md:col-span-2">
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Full Name</label>
                 <div className="relative">
@@ -299,10 +327,10 @@ const UserProfile = () => {
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FaEnvelope className="text-gray-400 mb-1" /></div>
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FaEnvelope className="text-gray-400 mb-2" /></div>
                   <input type="email" value={user.email} disabled className="block w-full pl-10 py-3 rounded-lg border border-transparent bg-gray-50 text-gray-500 cursor-not-allowed" />
-                  <span className="text-xs text-gray-500 -mt-2 ml-2 flex items-center gap-1">
-                  <span role="img" aria-label="lock">🔒</span> Email cannot be changed </span>
+                  <span className="text-xs text-gray-500 -mt-1 ml-2 flex items-center gap-1">
+                  <span role="img" aria-label="lock">🔒</span> Email cannot be changed</span>
                 </div>
               </div>
               <div>
@@ -324,25 +352,29 @@ const UserProfile = () => {
         </div>
       </div>
 
-      {/* --- NEW UPDATED PREVIEW / CROP MODAL --- */}
+      {/* --- DYNAMIC CROP MODAL --- */}
       {showCropModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="p-4 border-b">
-              <h3 className="text-lg font-bold text-gray-800">Adjust Profile Picture</h3>
+              {/* Dynamic Title */}
+              <h3 className="text-lg font-bold text-gray-800">
+                  {cropTarget === 'profile' ? 'Adjust Profile Picture' : 'Adjust Cover Image'}
+              </h3>
             </div>
             
             <div className="p-4 flex flex-col items-center">
               <p className="text-sm text-gray-500 mb-4">Drag to reposition. Use slider to zoom.</p>
               
-              {/* Cropper Container - Needs relative position and explicit height */}
               <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
                  <Cropper
                     image={tempImageSrc}
                     crop={crop}
                     zoom={zoom}
-                    aspect={1} // 1:1 Aspect Ratio for perfect square/circle
-                    cropShape="round" // Makes the cropping area circular
+                    // DYNAMIC ASPECT RATIO: 1 for Profile, 3/1 (Wide) for Cover
+                    aspect={cropTarget === 'profile' ? 1 : 3 / 1} 
+                    // DYNAMIC SHAPE: Round for Profile, Rect for Cover
+                    cropShape={cropTarget === 'profile' ? 'round' : 'rect'}
                     showGrid={false}
                     onCropChange={setCrop}
                     onZoomChange={setZoom}
@@ -350,7 +382,6 @@ const UserProfile = () => {
                   />
               </div>
 
-              {/* Zoom Slider */}
                <div className="mt-6 w-full flex items-center space-x-2 px-4">
                   <span role="img" aria-label="zoom out" className="text-gray-500">➖</span>
                   <input
@@ -359,7 +390,6 @@ const UserProfile = () => {
                     min={1}
                     max={3}
                     step={0.1}
-                    aria-labelledby="Zoom"
                     onChange={(e) => setZoom(Number(e.target.value))}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                   />
@@ -380,13 +410,7 @@ const UserProfile = () => {
                 disabled={isCropping}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium flex items-center disabled:opacity-50"
               >
-                {isCropping ? (
-                     <>Processing...</>
-                ) : (
-                     <>
-                       <FaCheck className="mr-2" /> Confirm Crop
-                     </>
-                )}
+                {isCropping ? <>Processing...</> : <><FaCheck className="mr-2" /> Confirm Crop</>}
               </button>
             </div>
           </div>

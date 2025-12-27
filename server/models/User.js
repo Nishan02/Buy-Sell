@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
     phone: { type: String },
     year: { type: String }, 
     profilePic: { type: String, default: "" },
+    coverImage: { type: String, default: "" },
 
     // --- VERIFICATION FIELDS (Standardized) ---
     isVerified: { type: Boolean, default: false },
