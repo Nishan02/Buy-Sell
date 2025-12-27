@@ -22,27 +22,38 @@ export const updateUserProfile = async (req, res) => {
         const user = await User.findById(req.user.id);
 
         if (user) {
+            // 1. Update text fields
             user.name = req.body.name || user.name;
             user.phone = req.body.phone || user.phone;
             user.year = req.body.year || user.year;
             
-            // If they change password
+            // 2. Handle Password
             if (req.body.password) {
-                user.password = req.body.password;
+                user.password = req.body.password; 
+            }
+
+            // 3. Handle Image (Simplified)
+            // Since we used 'multer-storage-cloudinary', the file is ALREADY uploaded.
+            // req.file.path contains the secure Cloudinary URL.
+            if (req.file) {
+                user.profilePic = req.file.path; 
             }
 
             const updatedUser = await user.save();
+
             res.json({
                 _id: updatedUser._id,
                 name: updatedUser.name,
                 email: updatedUser.email,
                 phone: updatedUser.phone,
-                year: updatedUser.year
+                year: updatedUser.year,
+                profilePic: updatedUser.profilePic, 
             });
         } else {
             res.status(404).json({ message: 'User not found' });
         }
     } catch (error) {
+        console.error("Profile Update Error:", error);
         res.status(500).json({ message: error.message });
     }
 };
