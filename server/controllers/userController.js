@@ -46,3 +46,40 @@ export const updateUserProfile = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// userController.js
+
+// 1. Change Password
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user.id).select('+password');
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) return res.status(401).json({ message: "Current password incorrect" });
+
+    // Set new password (the model's 'save' middleware will hash this)
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 2. Delete Account
+export const deleteAccount = async (req, res) => {
+  try {
+    // Delete user's items first to clean up database
+    await Item.deleteMany({ seller: req.user.id });
+    
+    // Delete the user
+    await User.findByIdAndDelete(req.user.id);
+    
+    res.status(200).json({ message: "Account and listings deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
