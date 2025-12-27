@@ -42,6 +42,7 @@ const MyListings = () => {
       if (res.ok) {
           setItems(items.map(item => item._id === id ? { ...item, isSold: !currentStatus } : item));
       }
+    // eslint-disable-next-line no-unused-vars
     } catch (err) {
       alert("Failed to update status");
     }
@@ -60,6 +61,7 @@ const MyListings = () => {
         if (res.ok) {
             setItems(items.filter(item => item._id !== id));
         }
+      // eslint-disable-next-line no-unused-vars
       } catch (err) {
         alert("Failed to delete item");
       }
