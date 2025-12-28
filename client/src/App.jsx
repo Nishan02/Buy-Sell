@@ -13,6 +13,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Wishlist from "./pages/Wishlist";
 import Chat from "./pages/Chat";
+import LostAndFound from "./pages/LostandFound";
+
 
 function App() {
   return (
@@ -22,6 +24,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/signup" element={<Auth />} />
+        <Route path="/lost-and-found" element={<LostAndFound />} />
         <Route path="/item/:id" element={<ItemDetails />} />
         <Route path="/edit-item/:id" element={<EditItem />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

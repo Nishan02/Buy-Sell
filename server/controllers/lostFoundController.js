@@ -41,3 +41,25 @@ export const getAllLostFound = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const markItemResolved = async (req, res) => {
+  try {
+    const item = await LostItem.findById(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    // Check if the logged-in user is the one who created the item
+    if (item.reporter.toString() !== req.user.id) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    item.status = 'Resolved';
+    await item.save();
+
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

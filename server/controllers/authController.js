@@ -135,17 +135,24 @@ export const loginUser = async (req, res) => {
         const token = jwt.sign(
             { id: user._id }, 
             process.env.JWT_SECRET, 
-            { expiresIn: '7d' } // Stays logged in for 7 days
+            { expiresIn: '7d' } 
         );
 
+        // --- UPDATED RESPONSE ---
         res.status(200).json({
             token,
             user: {
                 id: user._id,
                 name: user.name,
-                email: user.email
+                email: user.email,
+                // Add these lines so the frontend gets the data:
+                profilePic: user.profilePic, 
+                coverImage: user.coverImage,
+                phone: user.phone,
+                year: user.year
             }
         });
+
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
