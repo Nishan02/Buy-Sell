@@ -10,7 +10,7 @@ import {
 } from 'react-icons/fa';
 
 const ENDPOINT = "http://localhost:5000"; 
-var socket, selectedChatCompare;
+var socket;
 
 const Chat = () => {
   const [chats, setChats] = useState([]);
@@ -19,7 +19,10 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [socketConnected, setSocketConnected] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState([]); // NEW: Store online user IDs
+  const [onlineUsers, setOnlineUsers] = useState([]); 
+
+  // --- CRITICAL FIX: Use Ref to track selected chat inside socket listener ---
+  const selectedChatRef = useRef(null); 
 
   const location = useLocation(); 
   const user = JSON.parse(localStorage.getItem('user'));
@@ -39,7 +42,7 @@ const Chat = () => {
   const fileInputRef = useRef(null);
   const messageRefs = useRef({}); 
 
-  // --- 1. ROBUST SENDER LOGIC (Sidebar) ---
+  // --- HELPER: GET SENDER ---
   const getSender = (loggedUser, users) => {
     if (!users || users.length < 2) return { name: "Unknown User", email: "", profilePic: "" };
     const loggedInId = loggedUser._id || loggedUser.id;
@@ -56,48 +59,46 @@ const Chat = () => {
         lastMessage: chatData.latestMessage ? chatData.latestMessage.content : "",
         time: chatData.latestMessage ? new Date(chatData.latestMessage.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "",
         unread: 0,
-        users: chatData.users // Store raw users for online check
+        users: chatData.users
     };
   };
 
-  // --- 2. FIXED MESSAGE ALIGNMENT ---
   const transformMessage = (msg) => {
-      // Handle both populated object and direct ID string
       const msgSenderId = msg.sender._id || msg.sender;
       const currentUserId = user._id || user.id;
-
-      // Force String comparison to fix "Left Side" bug on refresh
       const isMe = String(msgSenderId) === String(currentUserId);
       
       return {
-          id: msg._id || Date.now(), // Fallback ID for optimistic updates
+          id: msg._id || Date.now(),
           text: msg.content,
           image: msg.image,
-          sender: isMe ? 'me' : 'buyer', // 'me' = Right, 'buyer' = Left
+          sender: isMe ? 'me' : 'buyer',
           time: msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "Just now",
           type: msg.image ? 'image' : 'text',
           status: 'read'
       };
   };
 
-  // --- 3. SOCKET CONNECTION & LISTENERS ---
+  // --- 1. SOCKET CONNECTION ---
   useEffect(() => {
     socket = io(ENDPOINT);
     socket.emit("setup", user);
     socket.on("connected", () => setSocketConnected(true));
 
-    // NEW: Listen for Online Users
     socket.on("online_users", (users) => {
         setOnlineUsers(users); 
     });
 
-    // NEW: Listen for Incoming Messages
+    // --- FIX: REAL-TIME MESSAGE LISTENER ---
     socket.on("message received", (newMessageReceived) => {
-        if (selectedChatCompare && selectedChatCompare.id === newMessageReceived.chat._id) {
-            // Append to current chat window
+        // Use the Ref to check the currently open chat
+        if (
+            selectedChatRef.current && 
+            selectedChatRef.current.id === newMessageReceived.chat._id
+        ) {
             setMessages(prev => [...prev, transformMessage(newMessageReceived)]);
         }
-        // Always refresh sidebar
+        // Always refresh sidebar to show new message preview
         fetchChats();
     });
 
@@ -108,7 +109,7 @@ const Chat = () => {
     };
   }, []);
 
-  // --- 4. ITEM CARD REDIRECT HANDLER ---
+  // --- 2. HANDLE REDIRECT FROM ITEM PAGE ---
   useEffect(() => {
     if (location.state && location.state.chat) {
         const rawChat = location.state.chat;
@@ -140,30 +141,32 @@ const Chat = () => {
     }
   };
 
+  // --- 3. UPDATED SELECT CHAT ---
   const handleSelectChat = async (chat) => {
     setSelectedChat(chat);
-    selectedChatCompare = chat;
+    selectedChatRef.current = chat; // UPDATE REF HERE
+    
     setIsMobileChatOpen(true);
     resetSearch();
-    
     setLoading(true);
+
     try {
         const { data } = await API.get(`/chat/message/${chat.id}`);
         const formattedMessages = data.map(msg => transformMessage(msg));
         setMessages(formattedMessages);
-        socket.emit("join chat", chat.id);
+        
+        socket.emit("join chat", chat.id); // Join the socket room
     } catch (error) {
         console.error("Error loading messages", error);
     }
     setLoading(false);
   };
 
-  // --- 5. FIXED SEND MESSAGE (Optimistic Update) ---
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    // A. Optimistic UI Update (Show immediately)
+    // Optimistic Update
     const tempMsg = {
         _id: Date.now(), 
         content: newMessage,
@@ -171,106 +174,53 @@ const Chat = () => {
         createdAt: new Date().toISOString(),
     };
     
-    // Add to UI immediately
     setMessages(prev => [...prev, transformMessage(tempMsg)]);
-    
     setNewMessage("");
     setShowEmojiPicker(false);
 
     try {
-        // B. Send to Backend
         const { data } = await API.post("/chat/message", {
             content: tempMsg.content,
             chatId: selectedChat.id,
         });
         
-        // C. Emit to Socket
         socket.emit("new message", data);
-        
         fetchChats(); 
     } catch (error) {
         console.error("Error sending message", error);
-        // Optional: Remove message if failed
     }
   };
 
-  const handleFileUpload = (e) => {
-    alert("Image upload backend required.");
+  // ... (Rest of UI Helpers remain unchanged) ...
+  const handleFileUpload = (e) => alert("Image upload backend required.");
+  const resetSearch = () => { setInChatSearch(""); setShowInChatSearch(false); setSearchMatches([]); setCurrentMatchIndex(0); };
+  const onEmojiClick = (emojiObject) => setNewMessage(prev => prev + emojiObject.emoji);
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  
+  useEffect(() => { if (!inChatSearch) scrollToBottom(); }, [messages, showEmojiPicker]);
+
+  // Search Logic
+  useEffect(() => {
+    if (!inChatSearch.trim()) { setSearchMatches([]); return; }
+    const matches = messages.map((msg, index) => (msg.text || "").toLowerCase().includes(inChatSearch.toLowerCase()) ? index : -1).filter(index => index !== -1);
+    setSearchMatches(matches); setCurrentMatchIndex(matches.length > 0 ? matches.length - 1 : 0);
+  }, [inChatSearch, messages]);
+
+  const handleNextMatch = () => { if (searchMatches.length === 0) return; const nextIndex = (currentMatchIndex + 1) % searchMatches.length; setCurrentMatchIndex(nextIndex); scrollToMessage(searchMatches[nextIndex]); };
+  const handlePrevMatch = () => { if (searchMatches.length === 0) return; const prevIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length; setCurrentMatchIndex(prevIndex); scrollToMessage(searchMatches[prevIndex]); };
+  const scrollToMessage = (index) => { const msgId = messages[index].id; messageRefs.current[msgId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+
+  const renderMessageText = (text, highlight, isActive) => {
+    if (!text) return ""; if (!highlight.trim() || !isActive) return text;
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    return <span>{parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? (<span key={i} className="bg-orange-300 text-gray-900 font-bold px-0.5 rounded shadow-sm">{part}</span>) : (part))}</span>;
   };
 
-  // --- HELPER: CHECK ONLINE STATUS ---
   const isPartnerOnline = () => {
       if (!selectedChat || !selectedChat.users) return false;
       const loggedInId = user._id || user.id;
-      // Find the user object that is NOT me
       const partner = selectedChat.users.find(u => String(u._id) !== String(loggedInId));
       return partner ? onlineUsers.includes(partner._id) : false;
-  };
-
-  // --- UI Helpers ---
-  const resetSearch = () => {
-    setInChatSearch("");
-    setShowInChatSearch(false);
-    setSearchMatches([]);
-    setCurrentMatchIndex(0);
-  };
-
-  const onEmojiClick = (emojiObject) => {
-    setNewMessage(prev => prev + emojiObject.emoji);
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-  useEffect(() => {
-    if (!inChatSearch) scrollToBottom();
-  }, [messages, showEmojiPicker]);
-
-  useEffect(() => {
-    if (!inChatSearch.trim()) {
-      setSearchMatches([]);
-      return;
-    }
-    const matches = messages
-      .map((msg, index) => (msg.text || "").toLowerCase().includes(inChatSearch.toLowerCase()) ? index : -1)
-      .filter(index => index !== -1);
-    
-    setSearchMatches(matches);
-    setCurrentMatchIndex(matches.length > 0 ? matches.length - 1 : 0);
-  }, [inChatSearch, messages]);
-
-  const handleNextMatch = () => {
-    if (searchMatches.length === 0) return;
-    const nextIndex = (currentMatchIndex + 1) % searchMatches.length;
-    setCurrentMatchIndex(nextIndex);
-    scrollToMessage(searchMatches[nextIndex]);
-  };
-
-  const handlePrevMatch = () => {
-    if (searchMatches.length === 0) return;
-    const prevIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
-    setCurrentMatchIndex(prevIndex);
-    scrollToMessage(searchMatches[prevIndex]);
-  };
-
-  const scrollToMessage = (index) => {
-    const msgId = messages[index].id;
-    messageRefs.current[msgId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
-
-  const renderMessageText = (text, highlight, isActive) => {
-    if (!text) return "";
-    if (!highlight.trim() || !isActive) return text;
-    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
-    return (
-      <span>
-        {parts.map((part, i) => 
-          part.toLowerCase() === highlight.toLowerCase() ? (
-            <span key={i} className="bg-orange-300 text-gray-900 font-bold px-0.5 rounded shadow-sm">{part}</span>
-          ) : ( part )
-        )}
-      </span>
-    );
   };
 
   return (
@@ -289,34 +239,19 @@ const Chat = () => {
 
             <div className="p-4">
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="text-gray-400" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search chats..."
-                  value={sidebarSearch}
-                  onChange={(e) => setSidebarSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full border-none focus:ring-2 focus:ring-indigo-500 text-sm transition outline-none"
-                />
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FaSearch className="text-gray-400" /></span>
+                <input type="text" placeholder="Search chats..." value={sidebarSearch} onChange={(e) => setSidebarSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full border-none focus:ring-2 focus:ring-indigo-500 text-sm transition outline-none" />
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {chats
-                .filter(chat => chat.name.toLowerCase().includes(sidebarSearch.toLowerCase()))
-                .map((chat) => (
-                <div 
-                  key={chat.id}
-                  onClick={() => handleSelectChat(chat)}
-                  className={`flex items-center p-4 cursor-pointer transition-colors border-b border-gray-50 hover:bg-gray-50 ${selectedChat?.id === chat.id ? 'bg-indigo-50 border-l-4 border-indigo-600' : ''}`}
-                >
+              {chats.filter(chat => chat.name.toLowerCase().includes(sidebarSearch.toLowerCase())).map((chat) => (
+                <div key={chat.id} onClick={() => handleSelectChat(chat)} className={`flex items-center p-4 cursor-pointer transition-colors border-b border-gray-50 hover:bg-gray-50 ${selectedChat?.id === chat.id ? 'bg-indigo-50 border-l-4 border-indigo-600' : ''}`}>
                   <div className="relative flex-shrink-0">
                     <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                       {chat.avatar ? <img src={chat.avatar} className="h-full w-full object-cover" alt="" /> : chat.name.charAt(0)}
                     </div>
-                    {/* Sidebar Online Dot */}
-                    {/* You can also use onlineUsers logic here if you want dots in sidebar */}
+                    {/* Online logic can go here too if needed */}
                   </div>
                   <div className="ml-4 flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-1">
@@ -324,14 +259,8 @@ const Chat = () => {
                       <span className={`text-xs ${chat.unread > 0 ? 'text-indigo-600 font-bold' : 'text-gray-400'}`}>{chat.time}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <p className={`text-sm truncate ${chat.unread > 0 ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>
-                            {chat.lastMessage}
-                        </p>
-                        {chat.unread > 0 && (
-                            <span className="ml-2 bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
-                                {chat.unread}
-                            </span>
-                        )}
+                        <p className={`text-sm truncate ${chat.unread > 0 ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>{chat.lastMessage}</p>
+                        {chat.unread > 0 && (<span className="ml-2 bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">{chat.unread}</span>)}
                     </div>
                   </div>
                 </div>
@@ -339,61 +268,32 @@ const Chat = () => {
             </div>
           </div>
 
-          {/* MAIN CHAT WINDOW */}
+          {/* MAIN CHAT */}
           <div className={`${!isMobileChatOpen ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-[#f0f2f5] relative`}>
             {selectedChat ? (
               <>
                 <div className="p-3 sm:p-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm z-20 h-16">
                   <div className="flex items-center">
-                    <button onClick={() => setIsMobileChatOpen(false)} className="md:hidden mr-3 text-gray-500 hover:text-indigo-600">
-                        <FaArrowLeft className="text-xl" />
-                    </button>
+                    <button onClick={() => setIsMobileChatOpen(false)} className="md:hidden mr-3 text-gray-500 hover:text-indigo-600"><FaArrowLeft className="text-xl" /></button>
                     <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold mr-3 overflow-hidden">
                         {selectedChat.avatar ? <img src={selectedChat.avatar} className="h-full w-full object-cover" alt="" /> : selectedChat.name.charAt(0)}
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-gray-900">{selectedChat.name}</h3>
-                        
-                        {/* --- FIXED: ONLINE STATUS --- */}
                         <p className="text-xs font-medium flex items-center">
-                            {isPartnerOnline() ? (
-                                <span className="text-green-500 flex items-center gap-1">
-                                    <FaCircle className="text-[8px]" /> Online
-                                </span>
-                            ) : (
-                                <span className="text-gray-400">Offline</span>
-                            )}
+                            {isPartnerOnline() ? (<span className="text-green-500 flex items-center gap-1"><FaCircle className="text-[8px]" /> Online</span>) : (<span className="text-gray-400">Offline</span>)}
                         </p>
                     </div>
                   </div>
-                  
                   <div className="flex items-center space-x-2 text-indigo-600">
-                    {showInChatSearch ? (
+                      {showInChatSearch ? (
                         <div className="flex items-center bg-white border border-gray-300 rounded-full px-3 py-1.5 shadow-sm animate-fade-in transition-all">
-                            <input 
-                                autoFocus
-                                type="text" 
-                                placeholder="Find..."
-                                className="bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-none appearance-none text-sm text-gray-700 w-28 sm:w-40 placeholder-gray-400"
-                                value={inChatSearch}
-                                onChange={(e) => setInChatSearch(e.target.value)}
-                            />
-                            {inChatSearch && (
-                                <div className="flex items-center text-xs text-gray-500 border-l border-gray-300 pl-2 ml-2">
-                                    <span className="mr-2 whitespace-nowrap font-medium">
-                                        {searchMatches.length > 0 ? `${currentMatchIndex + 1}/${searchMatches.length}` : '0/0'}
-                                    </span>
-                                    <div className="flex space-x-1">
-                                      <button onClick={handlePrevMatch} className="hover:bg-gray-100 p-1 rounded transition text-gray-600 hover:text-indigo-600"><FaChevronUp /></button>
-                                      <button onClick={handleNextMatch} className="hover:bg-gray-100 p-1 rounded transition text-gray-600 hover:text-indigo-600"><FaChevronDown /></button>
-                                    </div>
-                                </div>
-                            )}
+                            <input autoFocus type="text" placeholder="Find..." className="bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-none appearance-none text-sm text-gray-700 w-28 sm:w-40 placeholder-gray-400" value={inChatSearch} onChange={(e) => setInChatSearch(e.target.value)}/>
                             <button onClick={resetSearch} className="text-gray-400 hover:text-red-500 ml-2 pl-2"><FaTimes /></button>
                         </div>
-                    ) : (
+                      ) : (
                         <button onClick={() => setShowInChatSearch(true)} className="hover:bg-indigo-50 p-2.5 rounded-full transition text-gray-500 hover:text-indigo-600"><FaSearch /></button>
-                    )}
+                      )}
                   </div>
                 </div>
 
@@ -403,11 +303,7 @@ const Chat = () => {
                     return (
                         <div key={msg.id} ref={(el) => (messageRefs.current[msg.id] = el)} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[80%] sm:max-w-[60%] px-4 py-2 rounded-2xl shadow-sm relative group transition-all duration-300 ${msg.sender === 'me' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'} ${isCurrentMatch ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}>
-                            {msg.type === 'image' ? (
-                                <div className="mb-2"><img src={msg.image} alt="attachment" className="rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90" /></div>
-                            ) : (
-                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{renderMessageText(msg.text, inChatSearch, isCurrentMatch)}</p>
-                            )}
+                            {msg.type === 'image' ? (<div className="mb-2"><img src={msg.image} alt="attachment" className="rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90" /></div>) : (<p className="text-sm leading-relaxed whitespace-pre-wrap">{renderMessageText(msg.text, inChatSearch, isCurrentMatch)}</p>)}
                             <div className={`text-[10px] mt-1 flex items-center justify-end space-x-1 ${msg.sender === 'me' ? 'text-indigo-200' : 'text-gray-400'}`}>
                                 <span>{msg.time}</span>
                                 {msg.sender === 'me' && (<span className="ml-1">{msg.status === 'sent' && <FaCheck className="text-[10px]" />}{msg.status === 'read' && <FaCheckDouble className="text-[10px] text-blue-300" />}</span>)}
@@ -420,11 +316,7 @@ const Chat = () => {
                 </div>
 
                 <div className="p-3 sm:p-4 bg-white border-t border-gray-200 relative">
-                  {showEmojiPicker && (
-                      <div className="absolute bottom-20 left-4 z-30 shadow-2xl">
-                          <EmojiPicker onEmojiClick={onEmojiClick} height={350} width={300} />
-                      </div>
-                  )}
+                  {showEmojiPicker && (<div className="absolute bottom-20 left-4 z-30 shadow-2xl"><EmojiPicker onEmojiClick={onEmojiClick} height={350} width={300} /></div>)}
                   <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
                     <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-gray-400 hover:text-yellow-500 transition"><FaSmile className="text-xl" /></button>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
