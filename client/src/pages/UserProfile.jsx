@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from '../components/Navbar';
 import { FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaEdit, FaSave, FaTimes, FaCamera, FaSpinner, FaCheck, FaImage } from 'react-icons/fa';
 import Cropper from 'react-easy-crop';
+import { toast } from 'react-toastify';
 
 // --- UTILITY FUNCTION FOR CROPPING ---
 const createImage = (url) =>
@@ -160,7 +161,7 @@ const UserProfile = () => {
       setShowCropModal(false);
     } catch (e) {
       console.error(e);
-      alert("Could not crop image");
+      toast.error("Could not crop image");
     } finally {
       setIsCropping(false);
     }
@@ -212,10 +213,10 @@ const UserProfile = () => {
       setIsEditing(false);
       setImageFile(null);
       setCoverFile(null);
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
 
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setSaving(false);
     }

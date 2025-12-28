@@ -1,5 +1,9 @@
 // src/App.jsx
 import { Routes, Route } from "react-router-dom";
+
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -17,8 +21,21 @@ import LostAndFound from "./pages/LostandFound";
 
 
 function App() {
+
   return (
     <div className="min-h-screen bg-gray-100">
+      
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="light" // or "dark"
+      />
+
       <Routes>
         {/* === PUBLIC PAGES === */}
         <Route path="/" element={<Home />} />
@@ -34,12 +51,12 @@ function App() {
         <Route
           path="/sell"
           element={
-             <ProtectedRoute>
+            <ProtectedRoute>
               <SellItem />
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/profile"
           element={
@@ -48,7 +65,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-          <Route
+
+        <Route
           path="/my-listings"
           element={
             <ProtectedRoute>
@@ -57,20 +75,11 @@ function App() {
           }
         />
 
-         <Route
+        <Route
           path="/settings"
           element={
             <ProtectedRoute>
               <Settings />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/sell"
-          element={
-            <ProtectedRoute>
-              <SellItem />
             </ProtectedRoute>
           }
         />
@@ -84,25 +93,29 @@ function App() {
           }
         />
 
-        <Route 
-          path="/wishlist" 
-          element={ 
+        <Route
+          path="/wishlist"
+          element={
             <ProtectedRoute>
-               <Wishlist /> 
-            </ProtectedRoute> } 
+              <Wishlist />
+            </ProtectedRoute>
+          }
         />
 
-        <Route 
-          path="/chats" 
+        <Route
+          path="/chats"
           element={
             <ProtectedRoute>
               <Chat />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        {/* 404 Page */}
-        <Route path="*" element={<h1 className="text-center mt-20">404 Not Found</h1>} />
+
+        {/* 404 */}
+        <Route
+          path="*"
+          element={<h1 className="text-center mt-20">404 Not Found</h1>}
+        />
       </Routes>
     </div>
   );

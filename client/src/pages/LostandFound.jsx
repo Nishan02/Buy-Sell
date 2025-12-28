@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import axios from 'axios';
+import {toast } from 'react-toastify';
+
 import { 
   FaSearch, 
   FaPlus, 
@@ -14,9 +16,6 @@ import {
   FaCheck
 } from 'react-icons/fa';
 
-// --- 1. IMPORT TOASTIFY ---
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 const LostAndFound = () => {
   const [items, setItems] = useState([]);

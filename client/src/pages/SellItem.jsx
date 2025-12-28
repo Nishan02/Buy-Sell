@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar'; 
 import { FaCloudUploadAlt, FaRupeeSign, FaMapMarkerAlt, FaTag, FaCamera, FaUser, FaPhone, FaEnvelope, FaTrash, FaTimesCircle } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 
 const SellItem = () => {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ const SellItem = () => {
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (imageFiles.length + files.length > 3) {
-      alert("Maximum 3 images allowed");
+      toast.warning("Maximum 3 images allowed");
       return;
     }
     setImageFiles([...imageFiles, ...files]);
@@ -105,7 +106,7 @@ const SellItem = () => {
         throw new Error(result.message || 'Failed to create item');
       }
 
-      alert('Item posted successfully!');
+      toast.success('Item posted successfully!');
       navigate('/'); 
 
     } catch (err) {

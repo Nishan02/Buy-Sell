@@ -5,6 +5,7 @@ import HeroSection from '../components/HeroSection';
 import ItemCard from '../components/ItemCard';
 import Footer from '../components/Footer';
 import API from '../api/axios.js';
+import { toast } from "react-toastify";
 
 const Home = () => {
   const [items, setItems] = useState([]);
@@ -56,7 +57,7 @@ const Home = () => {
 
     const token = localStorage.getItem('token');
     if (!token) {
-        alert("Please login to save items to wishlist!");
+        toast.warning("Please login to save items to wishlist!");
         return;
     }
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { FaHeart, FaMapMarkerAlt, FaSadTear, FaExternalLinkAlt } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 
 const Wishlist = () => {
   const [items, setItems] = useState([]);
@@ -44,7 +45,7 @@ const Wishlist = () => {
         body: JSON.stringify({ itemId })
       });
     } catch (err) {
-      alert("Something went wrong");
+      toast.error("Something went wrong");
     }
   };
 

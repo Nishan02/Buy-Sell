@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaStore } from "react-icons/fa";
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ const Auth = () => {
       await axios.post('http://localhost:5000/api/auth/resend-otp', {
         email: formData.email
       });
-      alert("New code sent! Check your email.");
+      toast.success("New code sent! Check your email.");
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to resend OTP');
     }
@@ -83,6 +84,7 @@ const Auth = () => {
         localStorage.setItem('user', JSON.stringify(response.data.user));
 
         setLoading(false);
+        toast.success('Logged in successfully!');
         navigate('/'); // Redirect to home
       }
 
@@ -117,7 +119,7 @@ const Auth = () => {
           otp: formData.otp
         });
 
-        alert('Account created successfully!');
+        toast.success('Account created successfully!');
         setIsLogin(true); // Take them back to login
         setSignupStep(1);
         setLoading(false);

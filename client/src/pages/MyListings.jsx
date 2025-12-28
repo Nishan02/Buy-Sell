@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { FaTrash, FaCheckCircle, FaTimesCircle, FaBoxOpen } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 
 const MyListings = () => {
   const [items, setItems] = useState([]);
@@ -44,7 +45,7 @@ const MyListings = () => {
       }
     // eslint-disable-next-line no-unused-vars
     } catch (err) {
-      alert("Failed to update status");
+      toast.error("Failed to update status");
     }
   };
 
@@ -63,7 +64,7 @@ const MyListings = () => {
         }
       // eslint-disable-next-line no-unused-vars
       } catch (err) {
-        alert("Failed to delete item");
+        toast.error("Failed to delete item");
       }
     }
   };

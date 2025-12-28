@@ -3,6 +3,7 @@ import API from '../api/axios';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { FaLock, FaExclamationTriangle, FaTrashAlt } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 
 const Settings = () => {
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
@@ -37,10 +38,10 @@ const Settings = () => {
     try {
       await API.delete('/users/delete-account');
       localStorage.clear(); // Clear token and user data
-      alert("Account deleted.");
+      toast.success("Account deleted.");
       navigate('/login');
     } catch (err) {
-      alert("Could not delete account. Try again later.");
+      toast.error("Could not delete account. Try again later.");
     }
   };
 

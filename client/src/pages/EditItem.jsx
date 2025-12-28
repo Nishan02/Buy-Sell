@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar'; 
 import { FaCloudUploadAlt, FaRupeeSign, FaMapMarkerAlt, FaTag, FaCamera, FaUser, FaPhone, FaEnvelope, FaTrash, FaSave, FaArrowLeft, FaEye, FaTimesCircle } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 
 const EditItem = () => {
   const { id } = useParams();
@@ -98,7 +99,7 @@ const EditItem = () => {
     const selectedFiles = Array.from(e.target.files);
     
     if (previews.length + selectedFiles.length > 3) {
-      alert("Maximum 3 images allowed");
+      toast.warning("Maximum 3 images allowed");
       return;
     }
 
@@ -166,7 +167,7 @@ const EditItem = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Failed to update item');
 
-      alert('Item updated successfully!');
+      toast.success('Item updated successfully!');
       navigate('/my-listings');
 
     } catch (err) {
