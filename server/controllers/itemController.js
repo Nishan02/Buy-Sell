@@ -105,16 +105,15 @@ export const getItems = async (req, res) => {
 
         // 2. Category Filter
         if (category) {
-        if (category === 'Other') {
-            // Define your standard categories here
-            const standardCategories = ['Cycles', 'Books & Notes', 'Electronics', 'Hostel Essentials', 'Stationery'];
+            const standardCategories = ['Books & Notes', 'Electronics', 'Hostel Essentials', 'Cycles', 'Stationery'];
             
-            // Find items where category is NOT in the standard list
-            query.category = { $nin: standardCategories };
-        } else {
-            // Normal filtering for standard categories
-            query.category = category;
-        }
+            if (category === 'Others') {
+                // If 'Others' is selected, find items whose category is NOT in the standard list
+                query.category = { $nin: standardCategories };
+            } else {
+                // Otherwise, find the exact category match
+                query.category = category;
+            }
         }
 
         // 3. Price Filter
