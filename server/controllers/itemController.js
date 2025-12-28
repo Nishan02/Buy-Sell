@@ -4,7 +4,7 @@ import Item from '../models/Item.js';
 
 export const createItem = async (req, res) => {
     try {
-        const { title, description, price, category, contactNumber } = req.body;
+        const { title, description, price, category, contactNumber,location,sellerEmail } = req.body;
 
         // Check if images were actually uploaded (req.files is used for arrays)
         if (!req.files || req.files.length === 0) {
@@ -17,9 +17,11 @@ export const createItem = async (req, res) => {
         const newItem = await Item.create({
             title,
             description,
+            location,
             price: Number(price),
             category,
             contactNumber,
+            sellerEmail,
             images: imageUrls, // Now storing an array of strings
             seller: req.user.id
         });
@@ -66,6 +68,8 @@ export const updateItem = async (req, res) => {
             title: req.body.title,
             price: Number(req.body.price),
             description: req.body.description,
+            location: req.body.location,
+            sellerEmail: req.body.sellerEmail,
             category: req.body.category,
             contactNumber: req.body.contactNumber,
             images: finalImages // This now contains both KEPT and NEW images

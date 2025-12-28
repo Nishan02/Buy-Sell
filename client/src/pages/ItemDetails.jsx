@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 import Navbar from '../components/Navbar';
 import { FaWhatsapp, FaEnvelope, FaCommentDots } from 'react-icons/fa'; 
+// 1. IMPORT Map Marker Icon
+import { FaWhatsapp, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
 
 const ItemDetails = () => {
   const { id } = useParams();
@@ -83,13 +85,13 @@ const ItemDetails = () => {
         </div>
       )}
 
-
       <div className="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 lg:items-start">
           {/* LEFT: IMAGE GALLERY */}
           <div className="flex flex-col gap-4 max-w-md mx-auto lg:mx-0">
 
             {/* Main Container */}
+            {/* ... (Image Gallery Code Remains the Same) ... */}
             <div className="rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 h-80 sm:h-[450px] relative flex items-center justify-center"
                onClick={() => setIsZoomed(true)}
             >
@@ -98,21 +100,16 @@ const ItemDetails = () => {
                 alt={item.title}
                 className="w-full h-full object-contain"
               />
-
-              {/* Image Count Badge */}
               {item.images.length > 1 && (
                 <div className="absolute top-4 right-4 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-bold">
                   {activeImage + 1} / {item.images.length}
                 </div>
               )}
-
               <div className="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                 <span className="bg-white/90 text-gray-800 px-3 py-1.5 rounded-full text-xs font-bold shadow-md">Click to enlarge</span>
               </div>
-              
             </div>
 
-            {/* Thumbnails */}
             {item.images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto py-2 scrollbar-hide">
                 {item.images.map((img, index) => (
@@ -154,6 +151,16 @@ const ItemDetails = () => {
               </div>
             </div>
 
+            {/* --- NEW LOCATION SECTION --- */}
+            <div className="mt-8">
+              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Location</h3>
+              <div className="mt-3 flex items-center text-base text-gray-700 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                 <FaMapMarkerAlt className="text-indigo-500 text-lg mr-3" />
+                 <span className="font-medium">{item.location || "Location not specified by seller"}</span>
+              </div>
+            </div>
+            {/* --------------------------- */}
+
             {/* Seller Information Card */}
             <div className="mt-10 border-t border-gray-200 pt-8">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Seller Information</h3>
@@ -163,7 +170,7 @@ const ItemDetails = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-bold text-gray-900">{item.seller.name}</p>
-                  <p className="text-xs text-gray-500">{item.seller.email}</p>
+                  <p className="text-xs text-gray-500">{item.sellerEmail ||item.seller.email}</p>
                 </div>
               </div>
             </div>

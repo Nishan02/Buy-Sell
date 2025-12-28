@@ -14,7 +14,7 @@ const EditItem = () => {
     description: '',
     category: 'Books & Notes',
     customCategory: '',
-    location: '',
+    location: '', // Separate field
     sellerName: '',
     sellerPhone: '',
     sellerEmail: '',
@@ -26,6 +26,7 @@ const EditItem = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // --- 1. FETCH ITEM DATA ---
   useEffect(() => {
     const fetchItem = async () => {
       try {
@@ -37,44 +38,20 @@ const EditItem = () => {
 
         if (!response.ok) throw new Error(data.message || 'Failed to fetch item');
 
-        let description = data.description || '';
-        let location = '';
-        let sellerName = '';
-        let sellerPhone = '';
-        let sellerEmail = '';
-
-        const locSplit = description.split('📍 Location: ');
-        if (locSplit.length > 1) {
-          description = locSplit[0].trim();
-          const rest = locSplit[1];
-          const contactSplit = rest.split('📞 Contact Seller:');
-          location = contactSplit[0].trim();
-
-          if (contactSplit.length > 1) {
-            const contactInfo = contactSplit[1];
-            const nameMatch = contactInfo.match(/Name: (.*)/);
-            const phoneMatch = contactInfo.match(/Phone: (.*)/);
-            const emailMatch = contactInfo.match(/Email: (.*)/);
-
-            if (nameMatch) sellerName = nameMatch[1].trim();
-            if (phoneMatch) sellerPhone = phoneMatch[1].trim();
-            if (emailMatch) sellerEmail = emailMatch[1].trim();
-          }
-        }
-
         const standardCategories = ['Books & Notes', 'Electronics', 'Hostel Essentials', 'Cycles', 'Stationery'];
         const isOther = !standardCategories.includes(data.category);
 
+        // Populate form directly from data fields
         setFormData({
           title: data.title,
           price: data.price,
-          description: description,
+          description: data.description, // Clean description from DB
           category: isOther ? 'Others' : data.category,
           customCategory: isOther ? data.category : '',
-          location: location,
-          sellerName: sellerName,
-          sellerPhone: sellerPhone || (data.contactNumber ? data.contactNumber.replace('91', '') : ''),
-          sellerEmail: sellerEmail,
+          location: data.location || '', // Use the separate location field
+          sellerName: data.seller?.name || '', // Use populated seller info
+          sellerPhone: data.contactNumber ? data.contactNumber.replace(/^91/, '') : '',
+          sellerEmail: data.seller?.email || '',
         });
 
         if (data.images && data.images.length > 0) {
@@ -103,35 +80,26 @@ const EditItem = () => {
       return;
     }
 
-    // Generate previews and update state atomically to prevent duplication
     const newPreviewUrls = selectedFiles.map(file => URL.createObjectURL(file));
-
     setImageFiles(prevFiles => [...prevFiles, ...selectedFiles]);
     setPreviews(prevPreviews => [...prevPreviews, ...newPreviewUrls]);
-
-    // Reset input value so the same file can be picked again if deleted
     e.target.value = null;
   };
 
   const removeImage = (index) => {
     const removedItem = previews[index];
-    
-    // Clean up Blob URL from memory if it's a new file
     if (typeof removedItem === 'string' && removedItem.startsWith('blob:')) {
         URL.revokeObjectURL(removedItem);
     }
-
     setPreviews(prev => prev.filter((_, i) => i !== index));
-    
-    // Logic to correctly remove the file from imageFiles array
     if (typeof removedItem === 'string' && !removedItem.startsWith('http')) {
-        // It's a newly added file. Find its relative index in imageFiles.
         const existingCount = previews.filter(p => typeof p === 'string' && p.startsWith('http')).length;
         const fileIndex = index - existingCount;
         setImageFiles(prev => prev.filter((_, i) => i !== fileIndex));
     }
   };
 
+  // --- 2. SUBMIT UPDATED DATA ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -145,9 +113,11 @@ const EditItem = () => {
       const finalCategory = formData.category === 'Others' ? formData.customCategory : formData.category;
       data.append('category', finalCategory);
 
-      const fullDescription = `${formData.description}\n\n📍 Location: ${formData.location}\n\n📞 Contact Seller:\nName: ${formData.sellerName}\nPhone: ${formData.sellerPhone}\nEmail: ${formData.sellerEmail}`;
-      data.append('description', fullDescription);
+      // Send Description and Location separately
+      data.append('description', formData.description); 
+      data.append('location', formData.location);
       
+      // Phone number formatting
       data.append('contactNumber', `91${formData.sellerPhone.replace(/\D/g, '')}`);
 
       const existingUrls = previews.filter(p => typeof p === 'string' && p.startsWith('http'));
@@ -232,8 +202,8 @@ const EditItem = () => {
 
                     {/* Core Info */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                         <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Core Info</h3>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Core Info</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-bold text-gray-700">Item Title</label>
                                 <input type="text" name="title" required value={formData.title} onChange={handleChange} className="mt-1 block w-full bg-gray-50 border-gray-200 focus:bg-white focus:ring-indigo-500 rounded-xl px-4 py-3" />
@@ -272,7 +242,7 @@ const EditItem = () => {
                                 <label className="block text-sm font-bold text-gray-700">Description</label>
                                 <textarea name="description" rows={4} required value={formData.description} onChange={handleChange} className="mt-1 block w-full bg-gray-50 border-gray-200 focus:bg-white focus:ring-indigo-500 rounded-xl px-4 py-3" />
                             </div>
-                         </div>
+                          </div>
                     </div>
 
                     {/* Contact Info */}

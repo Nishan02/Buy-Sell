@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 const itemSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: { type: String, required: true },
+    location: { type: String, required: false },
+    sellerEmail: { type: String },
     price: { type: Number, required: true },
     category: { 
         type: String, 
