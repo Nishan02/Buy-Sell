@@ -104,7 +104,7 @@ const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
             </Link>
           </h3>
         </div>
-        <Link to={`/item/${item._id}`}>
+        
         <div className="mt-4 flex items-end justify-between relative z-20">
             <p className="text-xl font-bold text-gray-900">
                 ₹{item.price ? item.price.toLocaleString('en-IN') : '0'}
@@ -113,7 +113,6 @@ const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
                 View Details
             </span>
         </div>
-        </Link>
       </div>
     </div>
   );
