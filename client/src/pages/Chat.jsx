@@ -78,7 +78,6 @@ const Chat = () => {
   };
 
   // --- 1. INITIALIZE SOCKET ---
-   // --- 1. INITIALIZE SOCKET ---
   useEffect(() => {
     // Only connect if not already connected
     if (!socket.current) {
@@ -92,41 +91,31 @@ const Chat = () => {
     }
 
     // --- REAL-TIME LISTENER ---
-    // Remove old listener to prevent duplicates
+    // We remove any old listener before adding a new one to prevent duplicates
     socket.current.off("message received");
-
     socket.current.on("message received", (newMessageReceived) => {
-        console.log("📩 Socket Event Received:", newMessageReceived);
-
-        // 1. SAFELY GET CHAT ID
-        // The backend might send the chat as a full object OR just an ID string.
-        // We handle both cases here:
-        const incomingChatId = newMessageReceived.chat._id 
-            ? newMessageReceived.chat._id 
-            : newMessageReceived.chat;
-
-        const activeChatId = selectedChatRef.current ? selectedChatRef.current.id : null;
-
-        // 2. ROBUST COMPARISON
-        // Convert both to String to ensure "123" matches new ObjectId("123")
+        console.log("📩 Message Received via Socket:", newMessageReceived);
+        
+        // Use REF to check active chat (fixes stale state issue)
         if (
-            activeChatId && 
-            String(activeChatId) === String(incomingChatId)
+            selectedChatRef.current && 
+            selectedChatRef.current.id === newMessageReceived.chat._id
         ) {
             console.log("✅ Chat is open, appending message...");
             setMessages(prev => [...prev, transformMessage(newMessageReceived)]);
         } else {
-            console.log("⚠️ Background notification only", { active: activeChatId, incoming: incomingChatId });
+            console.log("⚠️ Chat not open or ID mismatch. Updating sidebar only.");
         }
-        
-        // Always refresh sidebar (to show unread dot or update last message)
+        // Always refresh sidebar
         fetchChats();
     });
 
-    // Cleanup isn't strictly necessary for the socket instance itself if you want it persistent,
-    // but turning off the listener is good practice.
+    fetchChats();
+
+    // Cleanup on unmount
     return () => {
-       socket.current.off("message received");
+        // Optional: socket.current.disconnect(); 
+        // We keep it alive for smoother navigation, or disconnect if you prefer strict cleanup
     };
   }, []); // Run once on mount
 
