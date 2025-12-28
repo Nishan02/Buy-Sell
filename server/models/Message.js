@@ -1,14 +1,10 @@
 import mongoose from 'mongoose';
 
-const messageSchema = new mongoose.Schema(
-  {
+const messageSchema = mongoose.Schema({
     sender: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     content: { type: String, trim: true },
-    image: { type: String }, // For image attachments
     chat: { type: mongoose.Schema.Types.ObjectId, ref: "Chat" },
-    readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // For read receipts
-  },
-  { timestamps: true }
-);
+}, { timestamps: true });
 
-export default mongoose.model("Message", messageSchema);
+const Message = mongoose.model("Message", messageSchema);
+export default Message;
