@@ -10,7 +10,6 @@ import {
 } from 'react-icons/fa';
 
 const ENDPOINT = "http://localhost:5000"; 
-var socket;
 
 const Chat = () => {
   const [chats, setChats] = useState([]);
@@ -21,20 +20,19 @@ const Chat = () => {
   const [loading, setLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]); 
 
-  // --- CRITICAL FIX: Use Ref to track selected chat inside socket listener ---
-  const selectedChatRef = useRef(null); 
+  // --- REFS FOR PERSISTENCE ---
+  const socket = useRef(null); // Keep socket in ref to prevent re-connections
+  const selectedChatRef = useRef(null); // Keep track of active chat for socket listener
 
   const location = useLocation(); 
   const user = JSON.parse(localStorage.getItem('user'));
   
-  // Search States
+  // UI States
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [inChatSearch, setInChatSearch] = useState("");
   const [showInChatSearch, setShowInChatSearch] = useState(false);
   const [searchMatches, setSearchMatches] = useState([]); 
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
-
-  // UI States
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
@@ -79,35 +77,47 @@ const Chat = () => {
       };
   };
 
-  // --- 1. SOCKET CONNECTION ---
+  // --- 1. INITIALIZE SOCKET ---
   useEffect(() => {
-    socket = io(ENDPOINT);
-    socket.emit("setup", user);
-    socket.on("connected", () => setSocketConnected(true));
+    // Only connect if not already connected
+    if (!socket.current) {
+        socket.current = io(ENDPOINT);
+        socket.current.emit("setup", user);
+        socket.current.on("connected", () => setSocketConnected(true));
+        
+        socket.current.on("online_users", (users) => {
+            setOnlineUsers(users); 
+        });
+    }
 
-    socket.on("online_users", (users) => {
-        setOnlineUsers(users); 
-    });
-
-    // --- FIX: REAL-TIME MESSAGE LISTENER ---
-    socket.on("message received", (newMessageReceived) => {
-        // Use the Ref to check the currently open chat
+    // --- REAL-TIME LISTENER ---
+    // We remove any old listener before adding a new one to prevent duplicates
+    socket.current.off("message received");
+    socket.current.on("message received", (newMessageReceived) => {
+        console.log("📩 Message Received via Socket:", newMessageReceived);
+        
+        // Use REF to check active chat (fixes stale state issue)
         if (
             selectedChatRef.current && 
             selectedChatRef.current.id === newMessageReceived.chat._id
         ) {
+            console.log("✅ Chat is open, appending message...");
             setMessages(prev => [...prev, transformMessage(newMessageReceived)]);
+        } else {
+            console.log("⚠️ Chat not open or ID mismatch. Updating sidebar only.");
         }
-        // Always refresh sidebar to show new message preview
+        // Always refresh sidebar
         fetchChats();
     });
 
     fetchChats();
 
+    // Cleanup on unmount
     return () => {
-        socket.disconnect();
+        // Optional: socket.current.disconnect(); 
+        // We keep it alive for smoother navigation, or disconnect if you prefer strict cleanup
     };
-  }, []);
+  }, []); // Run once on mount
 
   // --- 2. HANDLE REDIRECT FROM ITEM PAGE ---
   useEffect(() => {
@@ -144,7 +154,7 @@ const Chat = () => {
   // --- 3. UPDATED SELECT CHAT ---
   const handleSelectChat = async (chat) => {
     setSelectedChat(chat);
-    selectedChatRef.current = chat; // UPDATE REF HERE
+    selectedChatRef.current = chat; // CRITICAL: Update Ref so socket knows current chat
     
     setIsMobileChatOpen(true);
     resetSearch();
@@ -155,7 +165,7 @@ const Chat = () => {
         const formattedMessages = data.map(msg => transformMessage(msg));
         setMessages(formattedMessages);
         
-        socket.emit("join chat", chat.id); // Join the socket room
+        socket.current.emit("join chat", chat.id); 
     } catch (error) {
         console.error("Error loading messages", error);
     }
@@ -184,19 +194,19 @@ const Chat = () => {
             chatId: selectedChat.id,
         });
         
-        socket.emit("new message", data);
+        socket.current.emit("new message", data);
         fetchChats(); 
     } catch (error) {
         console.error("Error sending message", error);
     }
   };
 
-  // ... (Rest of UI Helpers remain unchanged) ...
+  // UI Helpers (Unchanged)
   const handleFileUpload = (e) => alert("Image upload backend required.");
   const resetSearch = () => { setInChatSearch(""); setShowInChatSearch(false); setSearchMatches([]); setCurrentMatchIndex(0); };
   const onEmojiClick = (emojiObject) => setNewMessage(prev => prev + emojiObject.emoji);
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(() => { if (!inChatSearch) scrollToBottom(); }, [messages, showEmojiPicker]);
 
   // Search Logic
@@ -251,7 +261,6 @@ const Chat = () => {
                     <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                       {chat.avatar ? <img src={chat.avatar} className="h-full w-full object-cover" alt="" /> : chat.name.charAt(0)}
                     </div>
-                    {/* Online logic can go here too if needed */}
                   </div>
                   <div className="ml-4 flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-1">
