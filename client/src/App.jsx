@@ -12,7 +12,7 @@ import Settings from "./pages/Settings";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Wishlist from "./pages/Wishlist";
-
+import Chat from "./pages/Chat";
 
 function App() {
   return (
@@ -80,7 +80,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route 
           path="/wishlist" 
           element={ 
@@ -89,6 +89,14 @@ function App() {
             </ProtectedRoute> } 
         />
 
+        <Route 
+          path="/chats" 
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* 404 Page */}
         <Route path="*" element={<h1 className="text-center mt-20">404 Not Found</h1>} />

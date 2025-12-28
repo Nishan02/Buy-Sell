@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   FaSearch, 
@@ -11,7 +11,8 @@ import {
   FaSignOutAlt, 
   FaUser, 
   FaList,
-  FaBullhorn 
+  FaBullhorn,
+  FaCommentDots
 } from 'react-icons/fa';
 
 const Navbar = () => {
@@ -19,10 +20,29 @@ const Navbar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
+  
+  // NEW: State for unread chat count
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user'));
+
+  // NEW: Sync Unread Count logic
+  useEffect(() => {
+    const fetchUnreadCount = () => {
+      // In a real app, you would fetch this from an API.
+      // For now, we read the value set by the Chat Page in localStorage
+      const count = parseInt(localStorage.getItem('campusMart_unreadCount') || '0');
+      setUnreadChatCount(count);
+    };
+
+    fetchUnreadCount(); // Initial check
+
+    // Listen for updates from the Chat page
+    window.addEventListener('chat-update', fetchUnreadCount);
+    return () => window.removeEventListener('chat-update', fetchUnreadCount);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -52,24 +72,30 @@ const Navbar = () => {
     setShowHistory(true);
   };
 
-  // Helper component for Nav Items to ensure consistent styling
-  const NavItem = ({ to, icon: Icon, label, className = "" }) => (
+  // Helper component for Nav Items
+  const NavItem = ({ to, icon: Icon, label, badgeCount, className = "" }) => (
     <Link 
       to={to} 
-      className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 group ${className}`}
+      className={`relative flex items-center gap-2 px-3 py-2 rounded-full text-sm font-semibold text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 group ${className}`}
     >
        <Icon className="text-lg group-hover:scale-110 transition-transform text-gray-400 group-hover:text-indigo-600" />
        <span className="hidden xl:block">{label}</span>
+       
+       {/* Badge Logic */}
+       {badgeCount > 0 && (
+         <span className="absolute top-1 right-1 xl:top-0 xl:right-auto xl:left-6 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white ring-2 ring-white transform -translate-y-1/2 translate-x-1/2 xl:translate-x-0">
+           {badgeCount}
+         </span>
+       )}
     </Link>
   );
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      {/* 1. Container: Increased width and padding for better spacing */}
       <div className="w-full px-4 sm:px-6 lg:px-8 max-w-[95rem] mx-auto">
         <div className="flex justify-between h-20 items-center gap-4">
 
-          {/* 2. LEFT: Logo */}
+          {/* 1. LEFT: Logo */}
           <div className="flex-shrink-0 flex items-center cursor-pointer min-w-fit" onClick={() => navigate('/')}>
             <div className="flex items-center text-2xl font-black text-indigo-600 tracking-tight">
               <FaStore className="h-8 w-8 mr-2.5" />
@@ -77,8 +103,8 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* 3. MIDDLE: Search Bar (Wider & Centered) */}
-          <div className="flex-1 max-w-3xl px-4 lg:px-12 hidden md:block relative">
+          {/* 2. MIDDLE: Search Bar */}
+          <div className="flex-1 max-w-2xl px-4 lg:px-8 hidden md:block relative">
             <form onSubmit={handleSearch} className="w-full">
               <div className="relative group">
                 <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -131,28 +157,30 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* 4. RIGHT: Actions */}
-          <div className="flex items-center gap-2 lg:gap-4 flex-shrink-0">
+          {/* 3. RIGHT: Actions */}
+          <div className="flex items-center gap-1 lg:gap-3 flex-shrink-0">
             
-            {/* Wishlist */}
             <NavItem to="/wishlist" icon={FaHeart} label="Wishlist" />
-
-            {/* Lost & Found */}
             <NavItem to="/lost-and-found" icon={FaBullhorn} label="Lost & Found" />
 
-            {/* Sell Button (Solid Style) */}
             <Link
               to="/sell"
-              className="hidden sm:inline-flex items-center gap-2 px-6 py-2.5 border border-transparent text-sm font-bold rounded-full shadow-lg text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:-translate-y-0.5"
+              className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 border border-transparent text-sm font-bold rounded-full shadow-lg text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:-translate-y-0.5 mx-2"
             >
               <FaPlus className="text-xs" />
               Sell Item
             </Link>
 
-            {/* Divider */}
+            {/* UPDATED: Chat Icon with Badge */}
+            <NavItem 
+              to="/chats" 
+              icon={FaCommentDots} 
+              label="Chats" 
+              badgeCount={unreadChatCount} // Pass the dynamic count
+            />
+
             <div className="h-8 w-px bg-gray-200 mx-2 hidden lg:block"></div>
 
-            {/* Profile Dropdown (Stylish Button) */}
             {token ? (
               <div className="relative">
                 <button
@@ -190,13 +218,16 @@ const Navbar = () => {
                         <FaList className="mr-3 text-gray-400 group-hover:text-indigo-500" /> My Listings
                       </Link>
                       
-                      {/* Mobile Links */}
                       <div className="lg:hidden border-t border-gray-100 my-1">
                           <Link to="/wishlist" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-pink-600">
                             <FaHeart className="mr-3 text-gray-400 group-hover:text-pink-500" /> Wishlist
                           </Link>
                           <Link to="/lost-and-found" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-indigo-600">
                             <FaBullhorn className="mr-3 text-gray-400 group-hover:text-indigo-500" /> Lost & Found
+                          </Link>
+                          <Link to="/chats" className="group flex items-center px-6 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-indigo-600">
+                            <FaCommentDots className="mr-3 text-gray-400 group-hover:text-indigo-500" /> Chats
+                            {unreadChatCount > 0 && <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadChatCount}</span>}
                           </Link>
                       </div>
 
@@ -218,7 +249,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Search Bar */}
       <div className="md:hidden px-4 pb-4 border-t border-gray-100 pt-3">
         <form onSubmit={handleSearch} className="relative">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
