@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from '../components/Navbar';
 import { FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaEdit, FaSave, FaTimes, FaCamera, FaSpinner, FaCheck, FaImage } from 'react-icons/fa';
 import Cropper from 'react-easy-crop';
-import { toast } from 'react-toastify';
+import {toast } from 'react-toastify';
 
 // --- UTILITY FUNCTION FOR CROPPING ---
 const createImage = (url) =>
