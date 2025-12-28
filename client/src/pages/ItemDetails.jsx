@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
 import API from '../api/axios';
 import Navbar from '../components/Navbar';
-import { FaWhatsapp, FaEnvelope, FaCommentDots } from 'react-icons/fa'; 
+
 // 1. IMPORT Map Marker Icon
-import { FaWhatsapp, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaWhatsapp, FaEnvelope, FaMapMarkerAlt,FaCommentDots  } from 'react-icons/fa';
 
 const ItemDetails = () => {
   const { id } = useParams();
