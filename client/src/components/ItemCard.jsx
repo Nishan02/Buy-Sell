@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaHeart, FaRegHeart, FaCommentDots } from 'react-icons/fa'; 
 import API from '../api/axios'; 
 
+// 1. IMPORT Toast
+import { toast } from 'react-toastify';
+
 const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
   const navigate = useNavigate(); 
 
@@ -16,27 +19,32 @@ const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
       onToggleWishlist(e);   // Execute your wishlist logic
   };
 
-  // --- NEW: Handle Chat Click ---
+  // --- UPDATED: Handle Chat Click with Toasts ---
   const handleChatClick = async (e) => {
       e.preventDefault();
       e.stopPropagation();
 
       const token = localStorage.getItem('token');
       if (!token) {
-          alert("Please login to chat with the seller!");
+          toast.error("Please login to chat with the seller!", {
+              position: "top-right",
+              autoClose: 3000,
+          });
           return;
       }
 
       const user = JSON.parse(localStorage.getItem('user'));
       
-      // 1. ROBUST ID EXTRACTION
-      // Check if item.seller is an object (populated) or just an ID string
+      // 1. Robust ID Extraction
       const sellerId = (item.seller && typeof item.seller === 'object') ? item.seller._id : item.seller;
       const currentUserId = user._id || user.id;
 
-      // 2. STRICT STRING COMPARISON (Fixes the self-chat bug)
+      // 2. Strict String Comparison (Prevents Self-Chat)
       if (String(currentUserId) === String(sellerId)) {
-          alert("You cannot chat with yourself! This is your item.");
+          toast.info("You cannot chat with yourself! This is your item.", {
+              position: "top-right",
+              autoClose: 3000,
+          });
           return;
       }
 
@@ -45,10 +53,12 @@ const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
           const { data } = await API.post('/chat', { userId: sellerId });
           
           // 4. Navigate to /chats AND pass the chat data in 'state'
-          // This fixes the issue of opening the general chat page
           navigate('/chats', { state: { chat: data } }); 
       } catch (error) {
           console.error("Error starting chat", error);
+          toast.error("Failed to start chat. Please try again.", {
+              position: "top-right"
+          });
       }
   };
   
@@ -96,15 +106,13 @@ const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
         <div>
           <p className="text-sm text-indigo-600 font-medium mb-1">{item.category}</p>
           <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
-            {/* The Link overlay makes the whole card clickable */}
-            {/* z-10 ensures it is clickable but sits BELOW the z-30 button */}
             <Link to={`/item/${item._id}`}>
               <span aria-hidden="true" className="absolute inset-0 z-10" />
               {item.title}
             </Link>
           </h3>
         </div>
-        
+
         <div className="mt-4 flex items-end justify-between relative z-20">
             <p className="text-xl font-bold text-gray-900">
                 ₹{item.price ? item.price.toLocaleString('en-IN') : '0'}

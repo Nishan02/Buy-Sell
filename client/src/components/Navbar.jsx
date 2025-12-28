@@ -1,53 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  FaSearch, 
-  FaUserCircle, 
-  FaStore, 
-  FaHistory, 
-  FaTrashAlt, 
-  FaHeart, 
-  FaPlus, 
-  FaSignOutAlt, 
-  FaUser, 
-  FaList,
-  FaBullhorn,
-  FaCommentDots
+  FaSearch, FaUserCircle, FaStore, FaHistory, FaTrashAlt, 
+  FaHeart, FaPlus, FaSignOutAlt, FaUser, FaList, FaBullhorn, FaCommentDots
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import API from '../api/axios'; 
+import io from 'socket.io-client'; 
+
+const ENDPOINT = "http://localhost:5000";
 
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
-  
-  // NEW: State for unread chat count
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user'));
+  // Handle case where user might be null or in 'userInfo'
+  const user = JSON.parse(localStorage.getItem('user')) || JSON.parse(localStorage.getItem('userInfo'));
 
-  // NEW: Sync Unread Count logic
+  // --- NEW: FETCH & LISTEN FOR NOTIFICATIONS ---
   useEffect(() => {
-    const fetchUnreadCount = () => {
-      // In a real app, you would fetch this from an API.
-      // For now, we read the value set by the Chat Page in localStorage
-      const count = parseInt(localStorage.getItem('campusMart_unreadCount') || '0');
-      setUnreadChatCount(count);
+    if (!user) return;
+
+    // A. Function to fetch and calculate unread count
+    const fetchUnreadCount = async () => {
+      try {
+        const { data } = await API.get("/chat");
+        
+        // --- DEBUGGING LOG (Check F12 Console) ---
+        console.log("🔔 Navbar Chat Data:", data);
+
+        const currentUserId = user._id || user.id;
+
+        // Calculate unread chats
+        const count = data.reduce((acc, chat) => {
+            // 1. Must have a latest message
+            if (!chat.latestMessage) return acc;
+
+            // 2. Sender must NOT be me (I don't notify myself)
+            const senderId = chat.latestMessage.sender._id || chat.latestMessage.sender;
+            if (String(senderId) === String(currentUserId)) return acc;
+
+            // 3. Check if I am in the 'readBy' array
+            // If readBy is missing, assume unread.
+            const readBy = chat.latestMessage.readBy || [];
+            
+            // Robust check: Compare Strings inside the array
+            const hasRead = readBy.some(id => String(id) === String(currentUserId));
+
+            if (!hasRead) {
+                return acc + 1;
+            }
+            return acc;
+        }, 0);
+
+        console.log("🔔 Calculated Unread Count:", count);
+        setUnreadChatCount(count);
+
+      } catch (error) {
+        console.error("Failed to fetch notification count", error);
+      }
     };
 
-    fetchUnreadCount(); // Initial check
+    // Initial Fetch
+    fetchUnreadCount();
 
-    // Listen for updates from the Chat page
-    window.addEventListener('chat-update', fetchUnreadCount);
-    return () => window.removeEventListener('chat-update', fetchUnreadCount);
-  }, []);
+    // B. Socket Listener for Real-time Badge Updates
+    const socket = io(ENDPOINT);
+    socket.emit("setup", user);
+    
+    // Listen for ANY new message to refresh the count
+    socket.on("message received", (newMessage) => {
+        console.log("🔔 Navbar: New Message Received!", newMessage);
+        fetchUnreadCount();
+    });
+
+    return () => {
+        socket.disconnect();
+    };
+  }, [user && (user._id || user.id)]); 
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('userInfo');
     toast.success('Logged out successfully!');
     navigate('/login');
   };
@@ -74,7 +114,6 @@ const Navbar = () => {
     setShowHistory(true);
   };
 
-  // Helper component for Nav Items
   const NavItem = ({ to, icon: Icon, label, badgeCount, className = "" }) => (
     <Link 
       to={to} 
@@ -83,9 +122,8 @@ const Navbar = () => {
        <Icon className="text-lg group-hover:scale-110 transition-transform text-gray-400 group-hover:text-indigo-600" />
        <span className="hidden xl:block">{label}</span>
        
-       {/* Badge Logic */}
        {badgeCount > 0 && (
-         <span className="absolute top-1 right-1 xl:top-0 xl:right-auto xl:left-6 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white ring-2 ring-white transform -translate-y-1/2 translate-x-1/2 xl:translate-x-0">
+         <span className="absolute top-0 right-0 xl:top-0 xl:right-auto xl:left-7 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white ring-2 ring-white transform -translate-y-1/3 translate-x-1/4 xl:translate-x-0">
            {badgeCount}
          </span>
        )}
@@ -105,7 +143,7 @@ const Navbar = () => {
             </div>
           </div>
 
-                   {/* 2. MIDDLE: Search Bar with History Dropdown */}
+          {/* 2. MIDDLE: Search Bar */}
           <div className="flex-1 max-w-2xl mx-4 lg:mx-8 hidden md:block relative">
             <form onSubmit={handleSearch}>
               <div className="relative">
@@ -128,42 +166,37 @@ const Navbar = () => {
             </form>
 
             {/* History Dropdown */}
-            {/* History Dropdown */}
-{showHistory && history.length > 0 && (
-  <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 z-[60] overflow-hidden">
-    
-    {/* History Items */}
-    <div className="py-1">
-      {history.map((term, index) => (
-        <button
-          key={index}
-          onMouseDown={() => {
-            setSearchTerm(term);
-            navigate(`/?search=${term}`);
-          }}
-          className="w-full text-left px-4 py-3 text-sm text-gray-600 hover:bg-indigo-50 flex items-center transition"
-        >
-          <FaHistory className="mr-3 text-gray-300 text-xs" />
-          {term}
-        </button>
-      ))}
-    </div>
-
-    {/* Small Clear Button on the Left */}
-    <div className="bg-gray-50 px-4 py-2 border-t border-gray-100 flex justify-start">
-      <button 
-        onMouseDown={(e) => {
-          e.preventDefault(); 
-          localStorage.removeItem('searchHistory');
-          setHistory([]);
-        }}
-        className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition flex items-center"
-      >
-        <FaTrashAlt className="mr-1" /> Clear History
-      </button>
-    </div>
-  </div>
-)}
+            {showHistory && history.length > 0 && (
+              <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 z-[60] overflow-hidden">
+                <div className="py-1">
+                  {history.map((term, index) => (
+                    <button
+                      key={index}
+                      onMouseDown={() => {
+                        setSearchTerm(term);
+                        navigate(`/?search=${term}`);
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm text-gray-600 hover:bg-indigo-50 flex items-center transition"
+                    >
+                      <FaHistory className="mr-3 text-gray-300 text-xs" />
+                      {term}
+                    </button>
+                  ))}
+                </div>
+                <div className="bg-gray-50 px-4 py-2 border-t border-gray-100 flex justify-start">
+                  <button 
+                    onMouseDown={(e) => {
+                      e.preventDefault(); 
+                      localStorage.removeItem('searchHistory');
+                      setHistory([]);
+                    }}
+                    className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition flex items-center"
+                  >
+                    <FaTrashAlt className="mr-1" /> Clear History
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 3. RIGHT: Actions */}
@@ -180,12 +213,12 @@ const Navbar = () => {
               Sell Item
             </Link>
 
-            {/* UPDATED: Chat Icon with Badge */}
+            {/* CHAT ICON WITH BADGE */}
             <NavItem 
               to="/chats" 
               icon={FaCommentDots} 
               label="Chats" 
-              badgeCount={unreadChatCount} // Pass the dynamic count
+              badgeCount={unreadChatCount} 
             />
 
             <div className="h-8 w-px bg-gray-200 mx-2 hidden lg:block"></div>
@@ -258,6 +291,7 @@ const Navbar = () => {
         </div>
       </div>
 
+      {/* Mobile Search Bar */}
       <div className="md:hidden px-4 pb-4 border-t border-gray-100 pt-3">
         <form onSubmit={handleSearch} className="relative">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

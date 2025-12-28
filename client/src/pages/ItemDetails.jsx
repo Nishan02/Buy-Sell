@@ -3,8 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 import Navbar from '../components/Navbar';
 
-// 1. IMPORT Map Marker Icon
-import { FaWhatsapp, FaEnvelope, FaMapMarkerAlt,FaCommentDots  } from 'react-icons/fa';
+// 1. IMPORT Toast Library
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+// 2. IMPORT Icons
+import { FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaCommentDots } from 'react-icons/fa';
 
 const ItemDetails = () => {
   const { id } = useParams();
@@ -21,6 +25,7 @@ const ItemDetails = () => {
         setItem(res.data);
       } catch (err) {
         console.error(err);
+        toast.error("Failed to load item details.");
       } finally {
         setLoading(false);
       }
@@ -28,33 +33,51 @@ const ItemDetails = () => {
     fetchItem();
   }, [id]);
 
-  // --- UPDATED: Handle Chat Logic ---
+  // --- UPDATED: Handle Chat Logic with Toast ---
   const handleChat = async () => {
     const token = localStorage.getItem('token');
+    
+    // 1. Check Login
     if (!token) {
-        alert("Please login to chat with the seller!");
+        toast.error("Please login to chat with the seller!", {
+            position: "top-right",
+            autoClose: 3000,
+        });
         navigate('/login');
         return;
     }
 
     const user = JSON.parse(localStorage.getItem('user'));
     
-    // Prevent chatting with yourself
-    if (user._id === item.seller._id) {
-        alert("You cannot chat with yourself!");
+    // 2. Robust ID Extraction
+    const currentUserId = user._id || user.id;
+    const sellerId = item.seller?._id || item.seller;
+
+    // 3. STRICT STRING COMPARISON (Prevents Self-Chat)
+    if (String(currentUserId) === String(sellerId)) {
+        // --- TOAST NOTIFICATION HERE ---
+        toast.info("You cannot chat with yourself! This is your item.", {
+            position: "top-right",
+            autoClose: 3000, // Closes after 3 seconds
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+        });
         return;
     }
 
     try {
-        // Create or get existing chat
-        const { data } = await API.post('/chat', { userId: item.seller._id });
+        // 4. Create or get existing chat
+        const { data } = await API.post('/chat', { userId: sellerId });
         
-        // Redirect to chat page AND PASS THE DATA
-        // This 'state' property is what Chat.jsx looks for to auto-open the chat
+        // 5. Redirect to chat page AND PASS THE DATA
         navigate('/chats', { state: { chat: data } }); 
     } catch (error) {
         console.error("Error starting chat:", error);
-        alert("Failed to start chat. Please try again.");
+        toast.error("Failed to start chat. Please try again.", {
+            position: "top-right"
+        });
     }
   };
 
@@ -70,6 +93,9 @@ const ItemDetails = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
+      
+      {/* --- TOAST CONTAINER (Required to show toasts) --- */}
+      <ToastContainer />
 
       {isZoomed && (
         <div
@@ -91,7 +117,6 @@ const ItemDetails = () => {
           <div className="flex flex-col gap-4 max-w-md mx-auto lg:mx-0">
 
             {/* Main Container */}
-            {/* ... (Image Gallery Code Remains the Same) ... */}
             <div className="rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 h-80 sm:h-[450px] relative flex items-center justify-center"
                onClick={() => setIsZoomed(true)}
             >
@@ -151,7 +176,7 @@ const ItemDetails = () => {
               </div>
             </div>
 
-            {/* --- NEW LOCATION SECTION --- */}
+            {/* --- LOCATION SECTION --- */}
             <div className="mt-8">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Location</h3>
               <div className="mt-3 flex items-center text-base text-gray-700 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
@@ -159,7 +184,6 @@ const ItemDetails = () => {
                  <span className="font-medium">{item.location || "Location not specified by seller"}</span>
               </div>
             </div>
-            {/* --------------------------- */}
 
             {/* Seller Information Card */}
             <div className="mt-10 border-t border-gray-200 pt-8">
@@ -170,7 +194,7 @@ const ItemDetails = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-bold text-gray-900">{item.seller.name}</p>
-                  <p className="text-xs text-gray-500">{item.sellerEmail ||item.seller.email}</p>
+                  <p className="text-xs text-gray-500">{item.sellerEmail || item.seller.email}</p>
                 </div>
               </div>
             </div>

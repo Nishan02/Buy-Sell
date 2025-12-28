@@ -54,11 +54,10 @@ const Chat = () => {
     const myId = getUserId(loggedUser);
     const user0Id = getUserId(users[0]);
 
-    // Robust comparison
     return String(user0Id) === String(myId) ? users[1] : users[0];
   };
 
-  // --- 2. ROBUST SOCKET INITIALIZATION (Keep Logic Unchanged) ---
+  // --- 2. ROBUST SOCKET INITIALIZATION ---
   useEffect(() => {
     if (!loggedInUserId) return;
 
@@ -108,7 +107,6 @@ const Chat = () => {
             return prev;
         });
         handleSelectChat(initialChat);
-        // Clean history state
         window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -126,7 +124,7 @@ const Chat = () => {
   const handleSelectChat = async (chat) => {
       setSelectedChat(chat);
       selectedChatRef.current = chat;
-      setIsMobileChatOpen(true); // Open mobile view
+      setIsMobileChatOpen(true); 
       
       try {
           const { data } = await API.get(`/message/${getUserId(chat)}`);
@@ -136,7 +134,7 @@ const Chat = () => {
   };
 
   const handleSendMessage = async (e) => {
-    e.preventDefault(); // Prevent form reload
+    e.preventDefault();
     if (!newMessage.trim() || !selectedChat) return;
 
     const chatId = getUserId(selectedChat);
@@ -151,13 +149,11 @@ const Chat = () => {
         createdAt: new Date().toISOString()
     };
     
-    // Clear input first
     const msgToSend = newMessage;
     setNewMessage("");
     setShowEmojiPicker(false);
 
     try {
-        // Optimistically add to UI
         setMessages(prev => [...prev, tempMsg]);
 
         const { data } = await API.post("/message", {
@@ -166,9 +162,6 @@ const Chat = () => {
         });
         
         socket.current.emit("new message", data);
-        // Replace temp message with real one if needed, or just append
-        // Since we optimistic update, we might get a duplicate if we don't filter, 
-        // but typically the socket event won't fire for self in this logic setup.
     } catch (error) { console.error("Error sending message:", error); }
   };
 
@@ -190,7 +183,7 @@ const Chat = () => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-  useEffect(() => { scrollToBottom(); }, [messages, showEmojiPicker]);
+  useEffect(() => { scrollToBottom(); }, [messages, showEmojiPicker, isTyping]);
 
   const onEmojiClick = (emojiObject) => {
     setNewMessage(prev => prev + emojiObject.emoji);
@@ -198,7 +191,6 @@ const Chat = () => {
 
   const handleFileUpload = () => alert("Image upload backend required");
 
-  // Search Logic (Visual only)
   useEffect(() => {
     if (!inChatSearch.trim()) { setSearchMatches([]); return; }
     const matches = messages.map((msg, index) => (msg.content || "").toLowerCase().includes(inChatSearch.toLowerCase()) ? index : -1).filter(index => index !== -1);
@@ -226,13 +218,11 @@ const Chat = () => {
           
           {/* --- SIDEBAR --- */}
           <div className={`${isMobileChatOpen ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 lg:w-1/4 flex-col border-r border-gray-200 bg-white`}>
-            {/* Sidebar Header */}
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 h-16">
               <h2 className="text-xl font-bold text-gray-800">Chats</h2>
               <button className="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition"><FaEllipsisV /></button>
             </div>
 
-            {/* Search Bar */}
             <div className="p-4">
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FaSearch className="text-gray-400" /></span>
@@ -246,7 +236,6 @@ const Chat = () => {
               </div>
             </div>
 
-            {/* Chat List */}
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               {chats.filter(c => {
                   const p = getSender(user, c.users);
@@ -311,7 +300,7 @@ const Chat = () => {
                     </div>
                   </div>
                   
-                  {/* Header Actions (Search) */}
+                  {/* Header Actions */}
                   <div className="flex items-center space-x-2 text-indigo-600">
                     {showInChatSearch ? (
                         <div className="flex items-center bg-white border border-gray-300 rounded-full px-3 py-1.5 shadow-sm animate-fade-in transition-all">
@@ -338,7 +327,6 @@ const Chat = () => {
                     return (
                         <div key={index} ref={(el) => (messageRefs.current[msg._id] = el)} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[80%] sm:max-w-[60%] px-4 py-2 rounded-2xl shadow-sm relative group transition-all duration-300 ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'} ${isCurrentMatch ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}>
-                            {/* If msg.image logic exists... */}
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{renderMessageText(msg.content, inChatSearch, isCurrentMatch)}</p>
                             <div className={`text-[10px] mt-1 flex items-center justify-end space-x-1 ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>
                                 <span>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "Just now"}</span>
@@ -348,7 +336,14 @@ const Chat = () => {
                         </div>
                     );
                   })}
-                  {isTyping && <div className="text-xs text-gray-500 italic ml-4 mb-2 animate-pulse">Partner is typing...</div>}
+                  
+                  {/* --- UPDATED TYPING INDICATOR --- */}
+                  {isTyping && (
+                    <div className="ml-4 mb-2 animate-pulse">
+                        <span className="text-sm font-bold text-indigo-600">Typing...</span>
+                    </div>
+                  )}
+                  
                   <div ref={messagesEndRef} />
                 </div>
 
