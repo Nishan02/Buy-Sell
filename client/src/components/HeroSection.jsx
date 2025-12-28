@@ -1,47 +1,136 @@
-// src/components/HeroSection.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
-const HeroSection = () => {
+const SLIDER_IMAGES = [
+  "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80", 
+  "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1920&q=80", 
+  "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1920&q=80", 
+  "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?auto=format&fit=crop&w=1920&q=80"  
+];
+
+const Hero = () => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // --- AUTO-SLIDE LOGIC ---
+  useEffect(() => {
+    const slideInterval = setInterval(() => {
+      nextSlide();
+    }, 3000);
+
+    return () => clearInterval(slideInterval);
+  }, [currentSlide]); 
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev === SLIDER_IMAGES.length - 1 ? 0 : prev + 1));
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev === 0 ? SLIDER_IMAGES.length - 1 : prev - 1));
+  };
+
+  const handleStartBrowsing = () => {
+    window.scrollTo({
+      top: 600, 
+      behavior: 'smooth'
+    });
+  };
+
   return (
-    <div className="relative bg-indigo-800 overflow-hidden">
-      <div className="max-w-7xl mx-auto">
-        <div className="relative z-10 pb-8 bg-indigo-800 sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
-          <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
-            <div className="sm:text-center lg:text-left">
-              <h1 className="text-4xl tracking-tight font-extrabold text-white sm:text-5xl md:text-6xl">
-                <span className="block xl:inline">Your Campus</span>{' '}
-                <span className="block text-indigo-400 xl:inline">Marketplace</span>
-              </h1>
-              <p className="mt-3 text-base text-indigo-200 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-                Buy, sell, and find everything you need for college life right here within your campus community. Secure, fast, and trusted.
-              </p>
-              <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
-                <div className="rounded-md shadow">
-                  <a href="#items" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50 md:py-4 md:text-lg md:px-10">
-                    Start Browsing
-                  </a>
-                </div>
-                <div className="mt-3 sm:mt-0 sm:ml-3">
-                  <Link to="/sell" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600 md:py-4 md:text-lg md:px-10">
-                    Sell an Item
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
+    <div className="relative bg-indigo-900 overflow-hidden min-h-[450px] lg:h-[550px] flex items-center">
+      
+      {/* Background Decorative Shape */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+         <div className="absolute -top-[50%] -left-[10%] w-[70%] h-[200%] bg-indigo-800/30 rounded-full blur-3xl transform rotate-12"></div>
       </div>
-      <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
-        {/* Campus Image */}
-        <img
-          className="h-56 w-full object-cover sm:h-72 md:h-96 lg:w-full lg:h-full opacity-90"
-          src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1950&q=80"
-          alt="Campus life"
-        />
+
+      <div className="max-w-[95rem] mx-auto px-4 sm:px-6 lg:px-8 w-full z-10">
+        <div className="lg:grid lg:grid-cols-2 gap-12 items-center">
+          
+          {/* --- LEFT SIDE: CONTENT --- */}
+          <div className="text-center lg:text-left mb-8 lg:mb-0 py-8 lg:py-0 z-20 relative">
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-white leading-tight tracking-tight mb-4">
+              Your Campus <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">
+                Marketplace
+              </span>
+            </h1>
+            <p className="text-base sm:text-lg text-indigo-100 mb-8 max-w-lg mx-auto lg:mx-0 font-medium leading-relaxed">
+              Buy, sell, and find everything you need for college life right here within your campus community.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              {/* UPDATED: Increased Size */}
+              <button 
+                onClick={handleStartBrowsing}
+                className="px-8 py-3.5 bg-white text-indigo-900 font-bold rounded-xl shadow-lg hover:bg-gray-50 hover:scale-105 transition-all transform duration-200 text-base sm:text-lg"
+              >
+                Start Browsing
+              </button>
+              
+              {/* UPDATED: Increased Size & Distinct Color (Solid lighter indigo) */}
+              <Link 
+                to="/sell"
+                className="px-8 py-3.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-500 hover:scale-105 transition-all transform duration-200 flex items-center justify-center text-base sm:text-lg border border-transparent"
+              >
+                Sell an Item
+              </Link>
+            </div>
+          </div>
+
+          {/* --- RIGHT SIDE: AUTOMATIC IMAGE SLIDER --- */}
+          <div className="relative h-[300px] sm:h-[350px] lg:h-full w-full overflow-hidden group lg:absolute lg:top-0 lg:right-0 lg:w-1/2">
+            
+            {/* Slider Track */}
+            <div 
+              className="w-full h-full flex transition-transform duration-1000 ease-in-out"
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {SLIDER_IMAGES.map((img, index) => (
+                <div key={index} className="min-w-full h-full relative">
+                  <img 
+                    src={img} 
+                    alt={`Slide ${index + 1}`} 
+                    className="w-full h-full object-cover object-center"
+                  />
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-indigo-900 via-indigo-900/40 to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-indigo-900/10 lg:to-indigo-900"></div>
+                </div>
+              ))}
+            </div>
+
+            {/* --- CONTROLS --- */}
+            <button 
+              onClick={prevSlide}
+              className="absolute top-1/2 left-4 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer z-20"
+            >
+              <FaChevronLeft size={18} />
+            </button>
+
+            <button 
+              onClick={nextSlide}
+              className="absolute top-1/2 right-4 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer z-20"
+            >
+              <FaChevronRight size={18} />
+            </button>
+
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+              {SLIDER_IMAGES.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    currentSlide === index ? "bg-white w-6" : "bg-white/40 w-1.5 hover:bg-white/80"
+                  }`}
+                />
+              ))}
+            </div>
+
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default HeroSection;
+export default Hero;
