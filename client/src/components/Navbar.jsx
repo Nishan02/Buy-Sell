@@ -103,58 +103,65 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* 2. MIDDLE: Search Bar */}
-          <div className="flex-1 max-w-2xl px-4 lg:px-8 hidden md:block relative">
-            <form onSubmit={handleSearch} className="w-full">
-              <div className="relative group">
-                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FaSearch className="text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                   {/* 2. MIDDLE: Search Bar with History Dropdown */}
+          <div className="flex-1 max-w-2xl mx-4 lg:mx-8 hidden md:block relative">
+            <form onSubmit={handleSearch}>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaSearch className="text-gray-400" />
                 </span>
                 <input
                   type="text"
                   value={searchTerm}
                   onFocus={handleFocus}
                   onBlur={() => setTimeout(() => setShowHistory(false), 200)}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-full leading-5 bg-gray-50 text-gray-900 placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm hover:bg-white hover:shadow-md"
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    navigate(`/?search=${e.target.value}`);
+                  }}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-full leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:text-sm"
                   placeholder="Search for books, cycles, electronics..."
                 />
               </div>
             </form>
 
             {/* History Dropdown */}
-            {showHistory && history.length > 0 && (
-              <div className="absolute top-full left-4 right-4 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 z-[60] overflow-hidden">
-                <div className="py-2">
-                  <div className="px-4 py-1 text-xs font-bold text-gray-400 uppercase tracking-wider">Recent Searches</div>
-                  {history.map((term, index) => (
-                    <button
-                      key={index}
-                      onMouseDown={() => {
-                        setSearchTerm(term);
-                        navigate(`/?search=${term}`);
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 flex items-center transition-colors font-medium"
-                    >
-                      <FaHistory className="mr-3 text-indigo-300" />
-                      {term}
-                    </button>
-                  ))}
-                </div>
-                <div className="bg-gray-50 px-4 py-2 border-t border-gray-100 flex justify-end">
-                  <button 
-                    onMouseDown={(e) => {
-                      e.preventDefault(); 
-                      localStorage.removeItem('searchHistory');
-                      setHistory([]);
-                    }}
-                    className="text-xs font-bold text-red-500 hover:text-red-700 transition flex items-center px-2 py-1 rounded hover:bg-red-50"
-                  >
-                    <FaTrashAlt className="mr-1.5" /> Clear History
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* History Dropdown */}
+{showHistory && history.length > 0 && (
+  <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 z-[60] overflow-hidden">
+    
+    {/* History Items */}
+    <div className="py-1">
+      {history.map((term, index) => (
+        <button
+          key={index}
+          onMouseDown={() => {
+            setSearchTerm(term);
+            navigate(`/?search=${term}`);
+          }}
+          className="w-full text-left px-4 py-3 text-sm text-gray-600 hover:bg-indigo-50 flex items-center transition"
+        >
+          <FaHistory className="mr-3 text-gray-300 text-xs" />
+          {term}
+        </button>
+      ))}
+    </div>
+
+    {/* Small Clear Button on the Left */}
+    <div className="bg-gray-50 px-4 py-2 border-t border-gray-100 flex justify-start">
+      <button 
+        onMouseDown={(e) => {
+          e.preventDefault(); 
+          localStorage.removeItem('searchHistory');
+          setHistory([]);
+        }}
+        className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition flex items-center"
+      >
+        <FaTrashAlt className="mr-1" /> Clear History
+      </button>
+    </div>
+  </div>
+)}
           </div>
 
           {/* 3. RIGHT: Actions */}
