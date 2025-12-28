@@ -19,6 +19,7 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [socketConnected, setSocketConnected] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]); // NEW: Store online user IDs
 
   const location = useLocation(); 
   const user = JSON.parse(localStorage.getItem('user'));
@@ -38,15 +39,9 @@ const Chat = () => {
   const fileInputRef = useRef(null);
   const messageRefs = useRef({}); 
 
-  // --- FIXED: GET SENDER LOGIC ---
-  // Safely identifies the "Other Person" in the chat
+  // --- 1. ROBUST SENDER LOGIC (Sidebar) ---
   const getSender = (loggedUser, users) => {
-    if (!users || users.length === 0) return { name: "Unknown User", email: "", profilePic: "" };
-    
-    // If chat data is corrupted and only has 1 user, return that user to prevent crash
-    if (users.length === 1) return users[0];
-
-    // Robust String Comparison to find the partner
+    if (!users || users.length < 2) return { name: "Unknown User", email: "", profilePic: "" };
     const loggedInId = loggedUser._id || loggedUser.id;
     return String(users[0]._id) === String(loggedInId) ? users[1] : users[0];
   };
@@ -58,42 +53,52 @@ const Chat = () => {
         name: sender.name,
         email: sender.email,
         avatar: sender.profilePic || '',
-        online: false, 
-        // Logic: If no message exists yet, show empty string
         lastMessage: chatData.latestMessage ? chatData.latestMessage.content : "",
         time: chatData.latestMessage ? new Date(chatData.latestMessage.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "",
         unread: 0,
-        users: chatData.users 
+        users: chatData.users // Store raw users for online check
     };
   };
 
+  // --- 2. FIXED MESSAGE ALIGNMENT ---
   const transformMessage = (msg) => {
-      // Robust comparison for 'me' vs 'buyer' alignment
-      const isMe = String(msg.sender._id) === String(user._id);
+      // Handle both populated object and direct ID string
+      const msgSenderId = msg.sender._id || msg.sender;
+      const currentUserId = user._id || user.id;
+
+      // Force String comparison to fix "Left Side" bug on refresh
+      const isMe = String(msgSenderId) === String(currentUserId);
       
       return {
-          id: msg._id,
+          id: msg._id || Date.now(), // Fallback ID for optimistic updates
           text: msg.content,
           image: msg.image,
-          sender: isMe ? 'me' : 'buyer', // 'me' = Right side, 'buyer' = Left side
-          time: new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+          sender: isMe ? 'me' : 'buyer', // 'me' = Right, 'buyer' = Left
+          time: msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "Just now",
           type: msg.image ? 'image' : 'text',
           status: 'read'
       };
   };
 
-  // --- 1. SOCKET & DATA LOADING ---
+  // --- 3. SOCKET CONNECTION & LISTENERS ---
   useEffect(() => {
     socket = io(ENDPOINT);
     socket.emit("setup", user);
     socket.on("connected", () => setSocketConnected(true));
 
+    // NEW: Listen for Online Users
+    socket.on("online_users", (users) => {
+        setOnlineUsers(users); 
+    });
+
+    // NEW: Listen for Incoming Messages
     socket.on("message received", (newMessageReceived) => {
-        if (!selectedChatCompare || selectedChatCompare.id !== newMessageReceived.chat._id) {
-            fetchChats();
-        } else {
+        if (selectedChatCompare && selectedChatCompare.id === newMessageReceived.chat._id) {
+            // Append to current chat window
             setMessages(prev => [...prev, transformMessage(newMessageReceived)]);
         }
+        // Always refresh sidebar
+        fetchChats();
     });
 
     fetchChats();
@@ -103,7 +108,7 @@ const Chat = () => {
     };
   }, []);
 
-  // --- 2. HANDLE REDIRECT FROM ITEM CARD ---
+  // --- 4. ITEM CARD REDIRECT HANDLER ---
   useEffect(() => {
     if (location.state && location.state.chat) {
         const rawChat = location.state.chat;
@@ -153,31 +158,39 @@ const Chat = () => {
     setLoading(false);
   };
 
+  // --- 5. FIXED SEND MESSAGE (Optimistic Update) ---
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
+    // A. Optimistic UI Update (Show immediately)
     const tempMsg = {
-        id: Date.now(),
-        text: newMessage,
-        sender: 'me',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: 'text',
-        status: 'sent' 
+        _id: Date.now(), 
+        content: newMessage,
+        sender: { _id: user._id || user.id },
+        createdAt: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, tempMsg]);
+    
+    // Add to UI immediately
+    setMessages(prev => [...prev, transformMessage(tempMsg)]);
+    
     setNewMessage("");
     setShowEmojiPicker(false);
 
     try {
+        // B. Send to Backend
         const { data } = await API.post("/chat/message", {
-            content: tempMsg.text,
+            content: tempMsg.content,
             chatId: selectedChat.id,
         });
+        
+        // C. Emit to Socket
         socket.emit("new message", data);
+        
         fetchChats(); 
     } catch (error) {
         console.error("Error sending message", error);
+        // Optional: Remove message if failed
     }
   };
 
@@ -185,6 +198,16 @@ const Chat = () => {
     alert("Image upload backend required.");
   };
 
+  // --- HELPER: CHECK ONLINE STATUS ---
+  const isPartnerOnline = () => {
+      if (!selectedChat || !selectedChat.users) return false;
+      const loggedInId = user._id || user.id;
+      // Find the user object that is NOT me
+      const partner = selectedChat.users.find(u => String(u._id) !== String(loggedInId));
+      return partner ? onlineUsers.includes(partner._id) : false;
+  };
+
+  // --- UI Helpers ---
   const resetSearch = () => {
     setInChatSearch("");
     setShowInChatSearch(false);
@@ -203,7 +226,6 @@ const Chat = () => {
     if (!inChatSearch) scrollToBottom();
   }, [messages, showEmojiPicker]);
 
-  // Search Logic
   useEffect(() => {
     if (!inChatSearch.trim()) {
       setSearchMatches([]);
@@ -293,9 +315,8 @@ const Chat = () => {
                     <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                       {chat.avatar ? <img src={chat.avatar} className="h-full w-full object-cover" alt="" /> : chat.name.charAt(0)}
                     </div>
-                    {chat.online && (
-                      <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white"></span>
-                    )}
+                    {/* Sidebar Online Dot */}
+                    {/* You can also use onlineUsers logic here if you want dots in sidebar */}
                   </div>
                   <div className="ml-4 flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-1">
@@ -332,14 +353,47 @@ const Chat = () => {
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-gray-900">{selectedChat.name}</h3>
+                        
+                        {/* --- FIXED: ONLINE STATUS --- */}
                         <p className="text-xs font-medium flex items-center">
-                            <span className="text-gray-400">Offline</span>
+                            {isPartnerOnline() ? (
+                                <span className="text-green-500 flex items-center gap-1">
+                                    <FaCircle className="text-[8px]" /> Online
+                                </span>
+                            ) : (
+                                <span className="text-gray-400">Offline</span>
+                            )}
                         </p>
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-2 text-indigo-600">
-                      <button className="hover:bg-indigo-50 p-2.5 rounded-full transition text-gray-500 hover:text-indigo-600"><FaSearch /></button>
+                    {showInChatSearch ? (
+                        <div className="flex items-center bg-white border border-gray-300 rounded-full px-3 py-1.5 shadow-sm animate-fade-in transition-all">
+                            <input 
+                                autoFocus
+                                type="text" 
+                                placeholder="Find..."
+                                className="bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-none appearance-none text-sm text-gray-700 w-28 sm:w-40 placeholder-gray-400"
+                                value={inChatSearch}
+                                onChange={(e) => setInChatSearch(e.target.value)}
+                            />
+                            {inChatSearch && (
+                                <div className="flex items-center text-xs text-gray-500 border-l border-gray-300 pl-2 ml-2">
+                                    <span className="mr-2 whitespace-nowrap font-medium">
+                                        {searchMatches.length > 0 ? `${currentMatchIndex + 1}/${searchMatches.length}` : '0/0'}
+                                    </span>
+                                    <div className="flex space-x-1">
+                                      <button onClick={handlePrevMatch} className="hover:bg-gray-100 p-1 rounded transition text-gray-600 hover:text-indigo-600"><FaChevronUp /></button>
+                                      <button onClick={handleNextMatch} className="hover:bg-gray-100 p-1 rounded transition text-gray-600 hover:text-indigo-600"><FaChevronDown /></button>
+                                    </div>
+                                </div>
+                            )}
+                            <button onClick={resetSearch} className="text-gray-400 hover:text-red-500 ml-2 pl-2"><FaTimes /></button>
+                        </div>
+                    ) : (
+                        <button onClick={() => setShowInChatSearch(true)} className="hover:bg-indigo-50 p-2.5 rounded-full transition text-gray-500 hover:text-indigo-600"><FaSearch /></button>
+                    )}
                   </div>
                 </div>
 
