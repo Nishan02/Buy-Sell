@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
 const SLIDER_IMAGES = [
-  "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80", 
-  "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1920&q=80", 
-  "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1920&q=80", 
-  "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?auto=format&fit=crop&w=1920&q=80"  
+  "https://ik.imagekit.io/gucotw3hj/Gemini_Generated_Image_bu1rsrbu1rsrbu1r.png", 
+  "https://ik.imagekit.io/gucotw3hj/Gemini_Generated_Image_26brjo26brjo26br.png",
+  "https://ik.imagekit.io/gucotw3hj/Gemini_Generated_Image_w8q5njw8q5njw8q5.png",
+  "https://ik.imagekit.io/gucotw3hj/Gemini_Generated_Image_6el2t16el2t16el2.png"
+  
 ];
 
 const Hero = () => {
