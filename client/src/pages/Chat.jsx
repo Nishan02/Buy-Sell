@@ -1,46 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import EmojiPicker from 'emoji-picker-react';
+import io from 'socket.io-client';
+import API from '../api/axios';
+import { useLocation } from 'react-router-dom';
 import { 
-  FaSearch, FaPaperPlane, FaPhoneAlt, FaEllipsisV, FaSmile, FaPaperclip, 
+  FaSearch, FaPaperPlane, FaEllipsisV, FaSmile, FaPaperclip, 
   FaArrowLeft, FaCheck, FaCheckDouble, FaCircle, FaTimes, FaChevronUp, FaChevronDown, FaImage
 } from 'react-icons/fa';
 
-// --- 1. MOCK CHAT LIST ---
-const MOCK_CHATS = [
-  { id: 1, name: 'Ritesh Regmi', lastMessage: 'Is the cycle still available?', time: '10:30 AM', unread: 2, online: true, avatar: '' },
-  { id: 2, name: 'Anjali Gupta', lastMessage: 'Okay, I will come to collect it.', time: 'Yesterday', unread: 1, online: false, avatar: '' }, 
-  { id: 3, name: 'Rahul Sharma', lastMessage: 'Can you reduce the price?', time: 'Yesterday', unread: 0, online: true, avatar: '' },
-];
-
-// --- 2. UNIQUE MESSAGES FOR EACH USER ---
-const MOCK_MESSAGES_DB = {
-  1: [ // Chat with Ritesh (ID: 1)
-    { id: 1, text: 'Hi, is the cycle still available?', sender: 'buyer', time: '10:30 AM', type: 'text', status: 'read' },
-    { id: 2, text: 'Yes, it is! When do you want to see it?', sender: 'me', time: '10:32 AM', type: 'text', status: 'read' },
-    { id: 3, text: 'Can I come to Patel Hostel around 5 PM?', sender: 'buyer', time: '10:33 AM', type: 'text', status: 'read' },
-    { id: 4, text: 'Sure, 5 PM works for me.', sender: 'me', time: '10:34 AM', type: 'text', status: 'read' },
-  ],
-  2: [ // Chat with Anjali (ID: 2)
-    { id: 1, text: 'Hey, I saw your post about the engineering books.', sender: 'buyer', time: 'Yesterday', type: 'text', status: 'read' },
-    { id: 2, text: 'Are they for the 2nd year?', sender: 'buyer', time: 'Yesterday', type: 'text', status: 'read' },
-    { id: 3, text: 'Yes, complete set for CSE 2nd year.', sender: 'me', time: 'Yesterday', type: 'text', status: 'read' },
-    { id: 4, text: 'Okay, I will come to collect it.', sender: 'buyer', time: 'Yesterday', type: 'text', status: 'read' },
-  ],
-  3: [ // Chat with Rahul (ID: 3)
-    { id: 1, text: 'Interested in the cooler.', sender: 'buyer', time: 'Yesterday', type: 'text', status: 'read' },
-    { id: 2, text: 'How old is it?', sender: 'buyer', time: 'Yesterday', type: 'text', status: 'read' },
-    { id: 3, text: 'About 6 months used.', sender: 'me', time: 'Yesterday', type: 'text', status: 'read' },
-    { id: 4, text: 'Can you reduce the price?', sender: 'buyer', time: 'Yesterday', type: 'text', status: 'read' },
-  ]
-};
+const ENDPOINT = "http://localhost:5000"; 
+var socket, selectedChatCompare;
 
 const Chat = () => {
-  const [chats, setChats] = useState(MOCK_CHATS);
+  const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
-  const [messages, setMessages] = useState([]); // Current visible messages
-  const [allMessages, setAllMessages] = useState(MOCK_MESSAGES_DB); // "Database" of all conversations
+  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const location = useLocation(); 
+  const user = JSON.parse(localStorage.getItem('user'));
   
   // Search States
   const [sidebarSearch, setSidebarSearch] = useState("");
@@ -53,60 +34,155 @@ const Chat = () => {
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
-  // Refs
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const messageRefs = useRef({}); 
 
-  // Sync Global Unread Count
-  useEffect(() => {
-    const unreadCount = chats.filter(c => c.unread > 0).length;
-    localStorage.setItem('campusMart_unreadCount', unreadCount.toString());
-    window.dispatchEvent(new Event('chat-update'));
-  }, [chats]);
+  // --- FIXED: GET SENDER LOGIC ---
+  // Safely identifies the "Other Person" in the chat
+  const getSender = (loggedUser, users) => {
+    if (!users || users.length === 0) return { name: "Unknown User", email: "", profilePic: "" };
+    
+    // If chat data is corrupted and only has 1 user, return that user to prevent crash
+    if (users.length === 1) return users[0];
 
-  // Simulate Online/Offline Toggling
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setChats(prevChats => {
-        const randomIndex = Math.floor(Math.random() * prevChats.length);
-        const updatedChats = [...prevChats];
-        updatedChats[randomIndex] = { ...updatedChats[randomIndex], online: !updatedChats[randomIndex].online };
-        return updatedChats;
-      });
-    }, 8000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Keep selected chat online status in sync with list
-  useEffect(() => {
-    if (selectedChat) {
-        const updatedSelected = chats.find(c => c.id === selectedChat.id);
-        if (updatedSelected) setSelectedChat(prev => ({ ...prev, online: updatedSelected.online }));
-    }
-  }, [chats]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Robust String Comparison to find the partner
+    const loggedInId = loggedUser._id || loggedUser.id;
+    return String(users[0]._id) === String(loggedInId) ? users[1] : users[0];
   };
 
-  useEffect(() => {
-    if (!inChatSearch) scrollToBottom();
-  }, [messages, showEmojiPicker]);
+  const transformChatData = (chatData) => {
+    const sender = getSender(user, chatData.users);
+    return {
+        id: chatData._id,
+        name: sender.name,
+        email: sender.email,
+        avatar: sender.profilePic || '',
+        online: false, 
+        // Logic: If no message exists yet, show empty string
+        lastMessage: chatData.latestMessage ? chatData.latestMessage.content : "",
+        time: chatData.latestMessage ? new Date(chatData.latestMessage.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "",
+        unread: 0,
+        users: chatData.users 
+    };
+  };
 
-  // --- UPDATED: SELECT CHAT LOGIC ---
-  const handleSelectChat = (chat) => {
+  const transformMessage = (msg) => {
+      // Robust comparison for 'me' vs 'buyer' alignment
+      const isMe = String(msg.sender._id) === String(user._id);
+      
+      return {
+          id: msg._id,
+          text: msg.content,
+          image: msg.image,
+          sender: isMe ? 'me' : 'buyer', // 'me' = Right side, 'buyer' = Left side
+          time: new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+          type: msg.image ? 'image' : 'text',
+          status: 'read'
+      };
+  };
+
+  // --- 1. SOCKET & DATA LOADING ---
+  useEffect(() => {
+    socket = io(ENDPOINT);
+    socket.emit("setup", user);
+    socket.on("connected", () => setSocketConnected(true));
+
+    socket.on("message received", (newMessageReceived) => {
+        if (!selectedChatCompare || selectedChatCompare.id !== newMessageReceived.chat._id) {
+            fetchChats();
+        } else {
+            setMessages(prev => [...prev, transformMessage(newMessageReceived)]);
+        }
+    });
+
+    fetchChats();
+
+    return () => {
+        socket.disconnect();
+    };
+  }, []);
+
+  // --- 2. HANDLE REDIRECT FROM ITEM CARD ---
+  useEffect(() => {
+    if (location.state && location.state.chat) {
+        const rawChat = location.state.chat;
+        const formattedChat = transformChatData(rawChat);
+        
+        setChats(prev => {
+            const exists = prev.find(c => c.id === formattedChat.id);
+            if (!exists) return [formattedChat, ...prev];
+            return prev;
+        });
+
+        handleSelectChat(formattedChat);
+        window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+
+  const fetchChats = async () => {
+    try {
+        const { data } = await API.get("/chat");
+        const formattedChats = data.map(chat => transformChatData(chat));
+        setChats(formattedChats);
+        
+        const unreadCount = formattedChats.filter(c => c.unread > 0).length;
+        localStorage.setItem('campusMart_unreadCount', unreadCount.toString());
+        window.dispatchEvent(new Event('chat-update'));
+    } catch (error) {
+        console.error(error);
+    }
+  };
+
+  const handleSelectChat = async (chat) => {
     setSelectedChat(chat);
-    
-    // Load the specific messages for this user from our "Database" state
-    const chatMessages = allMessages[chat.id] || [];
-    setMessages(chatMessages);
-    
+    selectedChatCompare = chat;
     setIsMobileChatOpen(true);
     resetSearch();
     
-    // Mark as read
-    setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
+    setLoading(true);
+    try {
+        const { data } = await API.get(`/chat/message/${chat.id}`);
+        const formattedMessages = data.map(msg => transformMessage(msg));
+        setMessages(formattedMessages);
+        socket.emit("join chat", chat.id);
+    } catch (error) {
+        console.error("Error loading messages", error);
+    }
+    setLoading(false);
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+
+    const tempMsg = {
+        id: Date.now(),
+        text: newMessage,
+        sender: 'me',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'text',
+        status: 'sent' 
+    };
+    setMessages(prev => [...prev, tempMsg]);
+    setNewMessage("");
+    setShowEmojiPicker(false);
+
+    try {
+        const { data } = await API.post("/chat/message", {
+            content: tempMsg.text,
+            chatId: selectedChat.id,
+        });
+        socket.emit("new message", data);
+        fetchChats(); 
+    } catch (error) {
+        console.error("Error sending message", error);
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    alert("Image upload backend required.");
   };
 
   const resetSearch = () => {
@@ -116,82 +192,16 @@ const Chat = () => {
     setCurrentMatchIndex(0);
   };
 
-  // --- UPDATED: SEND MESSAGE LOGIC ---
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedChat) return;
-
-    const msg = {
-      id: Date.now(),
-      text: newMessage,
-      sender: 'me',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      type: 'text',
-      status: 'sent' 
-    };
-
-    // 1. Update current view
-    setMessages(prev => [...prev, msg]);
-    
-    // 2. Update the "Database" so messages persist if we switch chats
-    setAllMessages(prev => ({
-        ...prev,
-        [selectedChat.id]: [...(prev[selectedChat.id] || []), msg]
-    }));
-
-    setNewMessage("");
-    setShowEmojiPicker(false);
-    updateSidebar(msg.text);
-
-    setTimeout(() => {
-        setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: 'read' } : m));
-    }, 1500);
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file || !selectedChat) return;
-
-    const imageUrl = URL.createObjectURL(file);
-    const msg = {
-        id: Date.now(),
-        text: 'Sent an image',
-        image: imageUrl,
-        sender: 'me',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: 'image',
-        status: 'sent'
-    };
-
-    setMessages(prev => [...prev, msg]);
-    setAllMessages(prev => ({
-        ...prev,
-        [selectedChat.id]: [...(prev[selectedChat.id] || []), msg]
-    }));
-
-    updateSidebar('📷 Image');
-    
-    setTimeout(() => {
-        setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: 'read' } : m));
-    }, 1500);
-  };
-
-  const updateSidebar = (lastMsg) => {
-    setChats(prevChats => {
-        const updatedChats = [...prevChats];
-        const chatIndex = updatedChats.findIndex(c => c.id === selectedChat.id);
-        if (chatIndex > -1) {
-          const chat = { ...updatedChats[chatIndex], lastMessage: lastMsg, time: 'Just now' };
-          updatedChats.splice(chatIndex, 1);
-          updatedChats.unshift(chat);
-        }
-        return updatedChats;
-      });
-  };
-
   const onEmojiClick = (emojiObject) => {
     setNewMessage(prev => prev + emojiObject.emoji);
   };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+  useEffect(() => {
+    if (!inChatSearch) scrollToBottom();
+  }, [messages, showEmojiPicker]);
 
   // Search Logic
   useEffect(() => {
@@ -200,7 +210,7 @@ const Chat = () => {
       return;
     }
     const matches = messages
-      .map((msg, index) => msg.text.toLowerCase().includes(inChatSearch.toLowerCase()) ? index : -1)
+      .map((msg, index) => (msg.text || "").toLowerCase().includes(inChatSearch.toLowerCase()) ? index : -1)
       .filter(index => index !== -1);
     
     setSearchMatches(matches);
@@ -227,6 +237,7 @@ const Chat = () => {
   };
 
   const renderMessageText = (text, highlight, isActive) => {
+    if (!text) return "";
     if (!highlight.trim() || !isActive) return text;
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
     return (
@@ -279,8 +290,8 @@ const Chat = () => {
                   className={`flex items-center p-4 cursor-pointer transition-colors border-b border-gray-50 hover:bg-gray-50 ${selectedChat?.id === chat.id ? 'bg-indigo-50 border-l-4 border-indigo-600' : ''}`}
                 >
                   <div className="relative flex-shrink-0">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                      {chat.avatar ? <img src={chat.avatar} className="h-full w-full rounded-full" alt="" /> : chat.name.charAt(0)}
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
+                      {chat.avatar ? <img src={chat.avatar} className="h-full w-full object-cover" alt="" /> : chat.name.charAt(0)}
                     </div>
                     {chat.online && (
                       <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white"></span>
@@ -307,67 +318,31 @@ const Chat = () => {
             </div>
           </div>
 
-          {/* MAIN CHAT */}
+          {/* MAIN CHAT WINDOW */}
           <div className={`${!isMobileChatOpen ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-[#f0f2f5] relative`}>
             {selectedChat ? (
               <>
-                {/* Header */}
                 <div className="p-3 sm:p-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm z-20 h-16">
                   <div className="flex items-center">
                     <button onClick={() => setIsMobileChatOpen(false)} className="md:hidden mr-3 text-gray-500 hover:text-indigo-600">
                         <FaArrowLeft className="text-xl" />
                     </button>
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold mr-3">
-                        {selectedChat.name.charAt(0)}
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold mr-3 overflow-hidden">
+                        {selectedChat.avatar ? <img src={selectedChat.avatar} className="h-full w-full object-cover" alt="" /> : selectedChat.name.charAt(0)}
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-gray-900">{selectedChat.name}</h3>
                         <p className="text-xs font-medium flex items-center">
-                            {selectedChat.online ? (
-                                <span className="text-green-500 flex items-center"><FaCircle className="text-[8px] mr-1" /> Online</span>
-                            ) : (
-                                <span className="text-gray-400">Offline</span>
-                            )}
+                            <span className="text-gray-400">Offline</span>
                         </p>
                     </div>
                   </div>
                   
-                  {/* Actions */}
                   <div className="flex items-center space-x-2 text-indigo-600">
-                    {showInChatSearch ? (
-                        <div className="flex items-center bg-white border border-gray-300 rounded-full px-3 py-1.5 shadow-sm animate-fade-in transition-all">
-                            <input 
-                                autoFocus
-                                type="text" 
-                                placeholder="Find..."
-                                className="bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-none appearance-none text-sm text-gray-700 w-28 sm:w-40 placeholder-gray-400"
-                                value={inChatSearch}
-                                onChange={(e) => setInChatSearch(e.target.value)}
-                            />
-                            {inChatSearch && (
-                                <div className="flex items-center text-xs text-gray-500 border-l border-gray-300 pl-2 ml-2">
-                                    <span className="mr-2 whitespace-nowrap font-medium">
-                                        {searchMatches.length > 0 ? `${currentMatchIndex + 1}/${searchMatches.length}` : '0/0'}
-                                    </span>
-                                    <div className="flex space-x-1">
-                                      <button onClick={handlePrevMatch} className="hover:bg-gray-100 p-1 rounded transition text-gray-600 hover:text-indigo-600"><FaChevronUp /></button>
-                                      <button onClick={handleNextMatch} className="hover:bg-gray-100 p-1 rounded transition text-gray-600 hover:text-indigo-600"><FaChevronDown /></button>
-                                    </div>
-                                </div>
-                            )}
-                            <button onClick={resetSearch} className="text-gray-400 hover:text-red-500 ml-2 pl-2">
-                                <FaTimes />
-                            </button>
-                        </div>
-                    ) : (
-                        <button onClick={() => setShowInChatSearch(true)} className="hover:bg-indigo-50 p-2.5 rounded-full transition text-gray-500 hover:text-indigo-600" title="Search in chat">
-                            <FaSearch />
-                        </button>
-                    )}
+                      <button className="hover:bg-indigo-50 p-2.5 rounded-full transition text-gray-500 hover:text-indigo-600"><FaSearch /></button>
                   </div>
                 </div>
 
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-pattern custom-scrollbar">
                   {messages.map((msg, index) => {
                     const isCurrentMatch = searchMatches.length > 0 && searchMatches[currentMatchIndex] === index;
@@ -390,7 +365,6 @@ const Chat = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
                 <div className="p-3 sm:p-4 bg-white border-t border-gray-200 relative">
                   {showEmojiPicker && (
                       <div className="absolute bottom-20 left-4 z-30 shadow-2xl">

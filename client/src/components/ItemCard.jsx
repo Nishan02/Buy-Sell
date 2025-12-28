@@ -1,9 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom'; 
+import { FaHeart, FaRegHeart, FaCommentDots } from 'react-icons/fa'; 
+import API from '../api/axios'; 
 
 const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
-  
+  const navigate = useNavigate(); 
+
   // Handle image source robustly
   const imageSrc = item.image || (item.images && item.images.length > 0 ? item.images[0] : 'https://via.placeholder.com/400');
 
@@ -14,6 +16,42 @@ const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
       onToggleWishlist(e);   // Execute your wishlist logic
   };
 
+  // --- NEW: Handle Chat Click ---
+  const handleChatClick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+          alert("Please login to chat with the seller!");
+          return;
+      }
+
+      const user = JSON.parse(localStorage.getItem('user'));
+      
+      // 1. ROBUST ID EXTRACTION
+      // Check if item.seller is an object (populated) or just an ID string
+      const sellerId = (item.seller && typeof item.seller === 'object') ? item.seller._id : item.seller;
+      const currentUserId = user._id || user.id;
+
+      // 2. STRICT STRING COMPARISON (Fixes the self-chat bug)
+      if (String(currentUserId) === String(sellerId)) {
+          alert("You cannot chat with yourself! This is your item.");
+          return;
+      }
+
+      try {
+          // 3. Create or fetch the chat via API
+          const { data } = await API.post('/chat', { userId: sellerId });
+          
+          // 4. Navigate to /chats AND pass the chat data in 'state'
+          // This fixes the issue of opening the general chat page
+          navigate('/chats', { state: { chat: data } }); 
+      } catch (error) {
+          console.error("Error starting chat", error);
+      }
+  };
+  
   return (
     <div className="group relative bg-white border border-gray-200 rounded-xl flex flex-col overflow-hidden hover:shadow-lg transition-shadow duration-300 ease-in-out">
       
@@ -25,8 +63,7 @@ const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
           className="w-full h-full object-center object-cover"
         />
         
-        {/* --- WISHLIST BUTTON (Fixed) --- */}
-        {/* Changed z-20 to z-30 to ensure it sits ABOVE the link overlay */}
+        {/* --- WISHLIST BUTTON --- */}
         <button
           onClick={handleHeartClick}
           className="absolute top-2 right-2 p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm hover:scale-110 active:scale-95 transition-all duration-200 z-30 group/heart cursor-pointer"
@@ -37,6 +74,15 @@ const ItemCard = ({ item, isWishlisted, onToggleWishlist }) => {
           ) : (
             <FaRegHeart className="text-gray-400 text-lg group-hover/heart:text-pink-500 transition-colors" />
           )}
+        </button>
+
+        {/* --- QUICK CHAT BUTTON --- */}
+        <button
+          onClick={handleChatClick}
+          className="absolute bottom-2 right-2 p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm hover:scale-110 active:scale-95 transition-all duration-200 z-30 text-indigo-600 hover:text-indigo-700 cursor-pointer group/chat"
+          title="Chat with Seller"
+        >
+           <FaCommentDots className="text-lg group-hover/chat:scale-110 transition-transform" />
         </button>
 
         {/* Status Badge */}
