@@ -2,8 +2,7 @@
 import { Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
-// 1. Import Footer
+import ScrollToTop from "./components/ScrollToTop";
 import Footer from "./components/Footer";
 
 // Pages
@@ -21,17 +20,16 @@ import ResetPassword from "./pages/ResetPassword";
 import Wishlist from "./pages/Wishlist";
 import Chat from "./pages/Chat";
 import LostAndFound from "./pages/LostandFound";
-import About from './pages/About';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-// 2. Import Contact Page
-import Contact from './pages/Contact'; 
+import About from "./pages/About";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Contact from "./pages/Contact";
 
 function App() {
-
   return (
-    // 3. Updated Layout: 'flex flex-col' pushes Footer to the bottom
+    // Layout wrapper
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
       
+      {/* Toast Notifications */}
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -40,10 +38,13 @@ function App() {
         closeOnClick
         pauseOnHover
         draggable
-        theme="light" 
+        theme="light"
       />
 
-      {/* 'flex-grow' ensures this section takes up all available space */}
+      {/* Scroll behavior controller (NEW, SAFE) */}
+      <ScrollToTop />
+
+      {/* Main content */}
       <div className="flex-grow">
         <Routes>
           {/* === PUBLIC PAGES === */}
@@ -54,7 +55,7 @@ function App() {
           <Route path="/item/:id" element={<ItemDetails />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/passwordreset/:resetToken" element={<ResetPassword />} />
-          
+
           {/* Support Pages */}
           <Route path="/about" element={<About />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -127,14 +128,17 @@ function App() {
           {/* 404 */}
           <Route
             path="*"
-            element={<h1 className="text-center mt-20 text-2xl font-bold text-gray-600">404 Not Found</h1>}
+            element={
+              <h1 className="text-center mt-20 text-2xl font-bold text-gray-600">
+                404 Not Found
+              </h1>
+            }
           />
         </Routes>
       </div>
 
-      {/* 4. Footer Component Added Here */}
+      {/* Footer */}
       <Footer />
-      
     </div>
   );
 }
