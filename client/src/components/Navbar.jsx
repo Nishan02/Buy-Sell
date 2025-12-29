@@ -139,7 +139,7 @@ const Navbar = () => {
           <div className="flex-shrink-0 flex items-center cursor-pointer min-w-fit" onClick={() => navigate('/')}>
             <div className="flex items-center text-2xl font-black text-indigo-600 tracking-tight">
               <FaStore className="h-8 w-8 mr-2.5" />
-              <span>Campus<span className="text-gray-900">Mart</span></span>
+              <span>kampus<span className="text-gray-900">Cart</span></span>
             </div>
           </div>
 
