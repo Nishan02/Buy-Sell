@@ -19,37 +19,28 @@ const Navbar = () => {
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
-  // Handle case where user might be null or in 'userInfo'
   const user = JSON.parse(localStorage.getItem('user')) || JSON.parse(localStorage.getItem('userInfo'));
 
-  // --- NEW: FETCH & LISTEN FOR NOTIFICATIONS ---
+  // --- UPDATED NOTIFICATION LOGIC ---
   useEffect(() => {
     if (!user) return;
 
-    // A. Function to fetch and calculate unread count
+    // 1. Define the fetch function
     const fetchUnreadCount = async () => {
       try {
         const { data } = await API.get("/chat");
         
-        // --- DEBUGGING LOG (Check F12 Console) ---
-        console.log("🔔 Navbar Chat Data:", data);
-
         const currentUserId = user._id || user.id;
 
-        // Calculate unread chats
         const count = data.reduce((acc, chat) => {
-            // 1. Must have a latest message
             if (!chat.latestMessage) return acc;
 
-            // 2. Sender must NOT be me (I don't notify myself)
             const senderId = chat.latestMessage.sender._id || chat.latestMessage.sender;
+            
+            // If I sent the message, it's not unread for me
             if (String(senderId) === String(currentUserId)) return acc;
 
-            // 3. Check if I am in the 'readBy' array
-            // If readBy is missing, assume unread.
             const readBy = chat.latestMessage.readBy || [];
-            
-            // Robust check: Compare Strings inside the array
             const hasRead = readBy.some(id => String(id) === String(currentUserId));
 
             if (!hasRead) {
@@ -58,7 +49,7 @@ const Navbar = () => {
             return acc;
         }, 0);
 
-        console.log("🔔 Calculated Unread Count:", count);
+        console.log("🔔 Unread Count Updated:", count);
         setUnreadChatCount(count);
 
       } catch (error) {
@@ -66,21 +57,30 @@ const Navbar = () => {
       }
     };
 
-    // Initial Fetch
+    // 2. Initial Call
     fetchUnreadCount();
 
-    // B. Socket Listener for Real-time Badge Updates
+    // 3. Socket Setup
     const socket = io(ENDPOINT);
     socket.emit("setup", user);
     
-    // Listen for ANY new message to refresh the count
-    socket.on("message received", (newMessage) => {
-        console.log("🔔 Navbar: New Message Received!", newMessage);
+    // Update when a new message arrives
+    socket.on("message received", () => {
         fetchUnreadCount();
     });
 
+    // 4. *** CRITICAL FIX: Listen for 'chatRead' event from Chat.jsx ***
+    const handleChatReadEvent = () => {
+        console.log("👀 Chat read event detected, refreshing badge...");
+        fetchUnreadCount();
+    };
+
+    window.addEventListener("chatRead", handleChatReadEvent);
+
+    // 5. Cleanup
     return () => {
         socket.disconnect();
+        window.removeEventListener("chatRead", handleChatReadEvent);
     };
   }, [user && (user._id || user.id)]); 
 
@@ -139,7 +139,7 @@ const Navbar = () => {
           <div className="flex-shrink-0 flex items-center cursor-pointer min-w-fit" onClick={() => navigate('/')}>
             <div className="flex items-center text-2xl font-black text-indigo-600 tracking-tight">
               <FaStore className="h-8 w-8 mr-2.5" />
-              <span>kampus<span className="text-gray-900">Mart</span></span>
+              <span>Campus<span className="text-gray-900">Mart</span></span>
             </div>
           </div>
 
