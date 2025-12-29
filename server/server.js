@@ -14,6 +14,7 @@ import userRoutes from './routes/userRoutes.js';
 import lostFoundRoutes from './routes/lostFoundRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';       
 import messageRoutes from './routes/messageRoutes.js'; 
+import uploadRoutes from './routes/uploadRoutes.js';
 
 // Connect to Database
 connectDB();
@@ -37,6 +38,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/lost-found', lostFoundRoutes);
 app.use('/api/chat', chatRoutes); 
 app.use('/api/message', messageRoutes); 
+app.use('/api/upload', uploadRoutes);
 
 app.get('/', (req, res) => {
     res.send('API is running...');

@@ -8,6 +8,7 @@ import {
   FaSearch, FaPaperPlane, FaEllipsisV, FaSmile, FaPaperclip, 
   FaArrowLeft, FaCheckDouble, FaCircle, FaTimes, FaChevronUp, FaChevronDown, FaImage
 } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 
 const ENDPOINT = "http://localhost:5000";
 
@@ -29,14 +30,17 @@ const Chat = () => {
   const [searchMatches, setSearchMatches] = useState([]); 
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
+  // --- NEW STATES FOR PREVIEW ---
+  const [imagePreview, setImagePreview] = useState(null);
+  const [fileToUpload, setFileToUpload] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   // Refs
   const socket = useRef(null);
   const selectedChatRef = useRef(null);
   const messagesContainerRef = useRef(null); 
   const fileInputRef = useRef(null);
   const messageRefs = useRef({});
-
-  const location = useLocation();
 
   const getUserId = (u) => {
     if (!u) return null;
@@ -53,7 +57,6 @@ const Chat = () => {
     return String(user0Id) === String(myId) ? users[1] : users[0];
   };
 
-  // --- SOCKET SETUP ---
   useEffect(() => {
     if (!loggedInUserId) return;
 
@@ -75,7 +78,6 @@ const Chat = () => {
 
         if (activeChatId && String(activeChatId) === String(incomingChatId)) {
             setMessages(prev => [...prev, newMessageRecieved]);
-            // If chat is open, mark new message as read immediately
             try { API.put("/message/read", { chatId: incomingChatId }); } catch(e){}
         }
         fetchChats();
@@ -94,7 +96,6 @@ const Chat = () => {
     } catch (error) { console.error("Error fetching chats:", error); }
   };
 
-  // --- HANDLE CHAT SELECTION ---
   const handleSelectChat = async (chat) => {
       setSelectedChat(chat);
       selectedChatRef.current = chat;
@@ -102,7 +103,6 @@ const Chat = () => {
       
       const chatId = getUserId(chat);
 
-      // Optimistic Update
       setChats(prevChats => prevChats.map(c => {
           if (String(getUserId(c)) === String(chatId) && c.latestMessage) {
              const currentReadBy = c.latestMessage.readBy || [];
@@ -176,12 +176,80 @@ const Chat = () => {
   
   useEffect(() => { 
       setTimeout(scrollToBottom, 100); 
-  }, [messages, showEmojiPicker, isTyping, selectedChat]);
+  }, [messages, showEmojiPicker, isTyping, selectedChat, imagePreview]); // Added imagePreview dependency
 
   const onEmojiClick = (emojiObject) => setNewMessage(prev => prev + emojiObject.emoji);
-  const handleFileUpload = () => alert("Image upload backend required");
 
-  // In-Chat Search Logic
+  // --- STEP 1: SELECT FILE & SHOW PREVIEW ---
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5000000) { 
+        toast.error("File is too large (Max 5MB)");
+        return;
+    }
+    
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+    setFileToUpload(file);
+    
+    // Clear input so same file can be selected again if cancelled
+    e.target.value = null; 
+  };
+
+  // --- STEP 2: CANCEL PREVIEW ---
+  const cancelPreview = () => {
+    setImagePreview(null);
+    setFileToUpload(null);
+  };
+
+  // --- STEP 3: UPLOAD & SEND IMAGE ---
+  const sendImage = async () => {
+    if (!fileToUpload) return;
+    
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('image', fileToUpload); 
+
+    try {
+        const config = { headers: { 'Content-Type': 'multipart/form-data' } };
+        const { data } = await API.post('/upload', formData, config);
+
+        const imagePath = data.filePath || data.url || data; 
+
+        // Close Preview
+        setImagePreview(null);
+        setFileToUpload(null);
+        setIsUploading(false);
+
+        const chatId = getUserId(selectedChat);
+        const tempMsg = {
+            _id: Date.now(),
+            content: imagePath,
+            sender: { _id: loggedInUserId },
+            chat: selectedChat,
+            createdAt: new Date().toISOString(),
+        };
+
+        setMessages(prev => [...prev, tempMsg]);
+
+        const { data: msgData } = await API.post("/message", {
+            content: imagePath,
+            chatId: chatId,
+        });
+        
+        socket.current.emit("new message", msgData);
+        fetchChats();
+
+    } catch (error) {
+        console.error("File upload error:", error);
+        toast.error("Failed to upload image.");
+        setIsUploading(false);
+    }
+  };
+
   useEffect(() => {
     if (!inChatSearch.trim()) { setSearchMatches([]); return; }
     const matches = messages.map((msg, index) => (msg.content || "").toLowerCase().includes(inChatSearch.toLowerCase()) ? index : -1).filter(index => index !== -1);
@@ -200,8 +268,32 @@ const Chat = () => {
       }
   };
 
+  const checkIsImage = (text) => {
+    if(!text) return false;
+    return (/\.(jpg|jpeg|png|gif|webp)$/i).test(text) || text.includes("/uploads/") || text.includes("cloudinary");
+  };
+
   const renderMessageText = (text, highlight, isActive) => {
-    if (!text) return ""; if (!highlight.trim() || !isActive) return text;
+    if (!text) return "";
+
+    const isImage = checkIsImage(text);
+
+    if (isImage) {
+        const fullUrl = text.startsWith("http") ? text : `${ENDPOINT}${text}`;
+        return (
+            <div className="mt-0">
+                <img 
+                    src={fullUrl} 
+                    alt="sent image" 
+                    className="max-w-[200px] sm:max-w-[300px] rounded-lg border-none cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(fullUrl, '_blank')}
+                    onError={(e) => { e.target.style.display = 'none'; }} 
+                />
+            </div>
+        );
+    }
+
+    if (!highlight.trim() || !isActive) return text;
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
     return <span>{parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? (<span key={i} className="bg-orange-300 text-gray-900 font-bold px-0.5 rounded shadow-sm">{part}</span>) : (part))}</span>;
   };
@@ -209,13 +301,43 @@ const Chat = () => {
   if (!user) return <div className="p-10 text-center text-red-500">Please Log In to Chat</div>;
 
   return (
-    // FIX 1: Use 'dvh' (dynamic viewport height) for mobile browsers
     <div className="h-[100dvh] flex flex-col bg-gray-100 font-sans overflow-hidden">
       <Navbar />
 
       <div className="flex-1 max-w-[95rem] w-full mx-auto p-0 sm:p-4 lg:p-6 h-full overflow-hidden">
-        <div className="bg-white sm:rounded-2xl shadow-xl overflow-hidden h-full flex border border-gray-200">
+        <div className="bg-white sm:rounded-2xl shadow-xl overflow-hidden h-full flex border border-gray-200 relative">
           
+          {/* --- IMAGE PREVIEW MODAL OVERLAY --- */}
+          {imagePreview && (
+            <div className="absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+                <div className="bg-white p-2 rounded-lg shadow-2xl max-w-md w-full flex flex-col items-center">
+                    <div className="w-full flex justify-between items-center mb-2 px-2">
+                        <h3 className="font-bold text-gray-700">Send Image?</h3>
+                        <button onClick={cancelPreview} className="text-gray-500 hover:text-red-500"><FaTimes /></button>
+                    </div>
+                    
+                    <img src={imagePreview} alt="Preview" className="max-h-[60vh] rounded border border-gray-200 object-contain" />
+                    
+                    <div className="flex gap-3 mt-4 w-full">
+                        <button 
+                            onClick={cancelPreview}
+                            className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
+                            disabled={isUploading}
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={sendImage}
+                            className="flex-1 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition flex justify-center items-center gap-2"
+                            disabled={isUploading}
+                        >
+                            {isUploading ? "Sending..." : <><FaPaperPlane /> Send</>}
+                        </button>
+                    </div>
+                </div>
+            </div>
+          )}
+
           {/* --- SIDEBAR --- */}
           <div className={`${isMobileChatOpen ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 lg:w-1/4 flex-col border-r border-gray-200 bg-white h-full`}>
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 h-16 shrink-0">
@@ -252,6 +374,7 @@ const Chat = () => {
                 const hasRead = readBy.some(id => String(id) === String(loggedInUserId));
                 
                 const isUnread = latestMsg && !isSenderMe && !hasRead;
+                const isLatestMsgImage = checkIsImage(latestMsg?.content);
 
                 return (
                 <div 
@@ -280,7 +403,11 @@ const Chat = () => {
                     </div>
                     <div className="flex justify-between items-center">
                         <p className={`text-sm truncate ${isUnread ? 'font-bold text-gray-900' : 'text-gray-500'} ${isActive ? 'text-indigo-700' : ''}`}>
-                            {latestMsg ? latestMsg.content : "Start chatting"}
+                            {latestMsg ? (
+                                isLatestMsgImage ? (
+                                    <span className="flex items-center gap-1 italic text-gray-400"><FaImage /> Photo</span>
+                                ) : latestMsg.content
+                            ) : "Start chatting"}
                         </p>
                         {isUnread && (
                             <span className="ml-2 h-2.5 w-2.5 bg-green-500 rounded-full"></span>
@@ -330,7 +457,6 @@ const Chat = () => {
                   </div>
                 </div>
 
-                {/* Messages Area */}
                 <div 
                   ref={messagesContainerRef} 
                   className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-pattern custom-scrollbar"
@@ -338,15 +464,17 @@ const Chat = () => {
                   {messages.map((msg, index) => {
                     const isMe = String(getUserId(msg.sender)) === String(loggedInUserId);
                     const isCurrentMatch = searchMatches.length > 0 && searchMatches[currentMatchIndex] === index;
+                    const isImg = checkIsImage(msg.content);
                     
                     return (
                         <div key={index} ref={(el) => (messageRefs.current[msg._id] = el)} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[80%] sm:max-w-[60%] px-4 py-2 rounded-2xl shadow-sm relative group transition-all duration-300 
-                            ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'} 
+                          <div className={`max-w-[80%] sm:max-w-[60%] rounded-2xl relative group transition-all duration-300 
+                            ${isImg ? 'p-0 bg-transparent shadow-none border-none' : `px-4 py-2 shadow-sm border border-gray-100 ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`} 
                             ${isCurrentMatch ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}
                           >
                             <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">{renderMessageText(msg.content, inChatSearch, isCurrentMatch)}</p>
-                            <div className={`text-[10px] mt-1 flex items-center justify-end space-x-1 ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>
+                            
+                            <div className={`text-[10px] mt-1 flex items-center justify-end space-x-1 ${isImg ? 'text-gray-500 pr-1' : (isMe ? 'text-indigo-200' : 'text-gray-400')}`}>
                                 <span>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "Just now"}</span>
                                 {isMe && (<span className="ml-1"><FaCheckDouble className="text-[10px] text-blue-300" /></span>)}
                             </div>
@@ -362,7 +490,6 @@ const Chat = () => {
                   )}
                 </div>
 
-                {/* Input Area (FIX: Made Sticky at Bottom) */}
                 <div className="p-3 sm:p-4 bg-white border-t border-gray-200 sticky bottom-0 z-30 shrink-0">
                   {showEmojiPicker && (
                       <div className="absolute bottom-20 left-4 z-30 shadow-2xl">
@@ -371,7 +498,8 @@ const Chat = () => {
                   )}
                   <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
                     <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-gray-400 hover:text-yellow-500 transition"><FaSmile className="text-xl" /></button>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                    {/* CHANGED: onChange now calls handleFileSelect instead of direct upload */}
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
                     <button type="button" onClick={() => fileInputRef.current.click()} className="p-2 text-gray-400 hover:text-indigo-600 transition"><FaPaperclip className="text-lg" /></button>
                     
                     <input 
