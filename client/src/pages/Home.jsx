@@ -3,7 +3,6 @@ import { useLocation, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
 import ItemCard from '../components/ItemCard';
-//import Footer from '../components/Footer';
 import API from '../api/axios.js';
 import { toast } from "react-toastify";
 
@@ -12,8 +11,7 @@ const Home = () => {
   const [wishlist, setWishlist] = useState([]); 
   const [loading, setLoading] = useState(true);
   
-  // --- 1. NEW STATE FOR SCROLLING ---
-  const [visibleCount, setVisibleCount] = useState(8); // Start with 8 items (2 rows of 4)
+  const [visibleCount, setVisibleCount] = useState(8); 
 
   // Filters & Sorting
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -36,7 +34,6 @@ const Home = () => {
         }
       });
       setItems(response.data);
-      // Reset visible count when filters change so user starts at top
       setVisibleCount(8); 
     } catch (error) {
       console.error("Error fetching items:", error);
@@ -80,15 +77,13 @@ const Home = () => {
     }
   };
 
-  // --- 2. SCROLL LISTENER ---
+  // --- 1. SCROLL LISTENER (Infinite Scroll) ---
   useEffect(() => {
     const handleScroll = () => {
-      // Check if user has scrolled to the bottom of the page
       if (
-        window.innerHeight + document.documentElement.scrollTop + 100 // Buffer of 100px
+        window.innerHeight + document.documentElement.scrollTop + 100 
         >= document.documentElement.offsetHeight
       ) {
-        // Load 8 more items
         setVisibleCount((prev) => prev + 8);
       }
     };
@@ -104,6 +99,28 @@ const Home = () => {
   useEffect(() => {
     fetchWishlist();
   }, []);
+
+  // --- 3. AUTO-SCROLL LOGIC (FIXED WITH DELAY) ---
+  useEffect(() => {
+    if (searchQuery && !loading) {
+      // We wait 100ms to let the browser finish "resetting" the scroll to top
+      const timer = setTimeout(() => {
+        const itemsSection = document.getElementById('items');
+        if (itemsSection) {
+          const elementPosition = itemsSection.getBoundingClientRect().top + window.scrollY;
+          // Offset of 240px handles the Sticky Navbar + Filter Bar height
+          const offsetPosition = elementPosition - 240; 
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+        }
+      }, 100); // 100ms delay ensures reliability
+
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery, loading]); 
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -127,9 +144,9 @@ const Home = () => {
                         ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md' 
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
-                   >
+                    >
                       All
-                   </button>
+                    </button>
                   {categories.map((cat) => (
                     <button
                       key={cat}
@@ -183,9 +200,8 @@ const Home = () => {
               <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                 {searchQuery ? `Results for "${searchQuery}"` : selectedCategory ? `${selectedCategory}` : 'Fresh Recommendations'}
               </h2>
-              {/* Show count of visible vs total */}
               <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                 Showing {Math.min(visibleCount, items.length)} of {items.length} items
+                  Showing {Math.min(visibleCount, items.length)} of {items.length} items
               </span>
             </div>
 
@@ -195,7 +211,6 @@ const Home = () => {
               </div>
             ) : items.length > 0 ? (
               <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-                {/* --- 3. RENDER SLICED ITEMS --- */}
                 {items.slice(0, visibleCount).map((item) => (
                   <Link to={`/item/${item._id}`} key={item._id}>
                     <ItemCard 
@@ -213,10 +228,9 @@ const Home = () => {
               </div>
             )}
             
-            {/* Optional: Loading indicator at bottom when scrolling */}
             {items.length > visibleCount && (
                <div className="py-8 text-center text-gray-400 text-sm italic">
-                  Scroll for more...
+                 Scroll for more...
                </div>
             )}
           </div>
