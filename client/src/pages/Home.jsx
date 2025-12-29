@@ -3,7 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
 import ItemCard from '../components/ItemCard';
-import Footer from '../components/Footer';
+//import Footer from '../components/Footer';
 import API from '../api/axios.js';
 import { toast } from "react-toastify";
 
@@ -223,7 +223,6 @@ const Home = () => {
         </section>
       </main>
       
-      <Footer />
     </div>
   );
 };
