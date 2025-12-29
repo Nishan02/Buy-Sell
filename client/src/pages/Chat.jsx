@@ -6,7 +6,7 @@ import API from '../api/axios';
 import { useLocation } from 'react-router-dom';
 import { 
   FaSearch, FaPaperPlane, FaEllipsisV, FaSmile, FaPaperclip, 
-  FaArrowLeft, FaCheck, FaCheckDouble, FaCircle, FaTimes, FaChevronUp, FaChevronDown, FaImage
+  FaArrowLeft, FaCheckDouble, FaCircle, FaTimes, FaChevronUp, FaChevronDown, FaImage
 } from 'react-icons/fa';
 
 const ENDPOINT = "http://localhost:5000";
@@ -29,16 +29,15 @@ const Chat = () => {
   const [searchMatches, setSearchMatches] = useState([]); 
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  // --- REFS ---
+  // Refs
   const socket = useRef(null);
   const selectedChatRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null); // Ref for the container (Fixes Page Scroll)
   const fileInputRef = useRef(null);
   const messageRefs = useRef({});
 
   const location = useLocation();
 
-  // --- 1. HELPER: SAFE ID RETRIEVAL ---
   const getUserId = (u) => {
     if (!u) return null;
     return u._id || u.id || u.userId;
@@ -47,25 +46,19 @@ const Chat = () => {
   const user = JSON.parse(localStorage.getItem("user")) || JSON.parse(localStorage.getItem("userInfo"));
   const loggedInUserId = getUserId(user);
 
-  // --- HELPER: GET PARTNER INFO ---
   const getSender = (loggedUser, users) => {
     if (!users || users.length < 2) return { name: "Unknown User", pic: "", profilePic: "" };
-    
     const myId = getUserId(loggedUser);
     const user0Id = getUserId(users[0]);
-
     return String(user0Id) === String(myId) ? users[1] : users[0];
   };
 
-  // --- 2. ROBUST SOCKET INITIALIZATION ---
+  // --- SOCKET SETUP ---
   useEffect(() => {
     if (!loggedInUserId) return;
 
     socket.current = io(ENDPOINT);
-
-    const setupSocket = () => {
-        socket.current.emit("setup", { _id: loggedInUserId });
-    };
+    const setupSocket = () => socket.current.emit("setup", { _id: loggedInUserId });
 
     socket.current.on("connect", () => {
         setupSocket(); 
@@ -86,32 +79,12 @@ const Chat = () => {
         fetchChats();
     });
 
-    const timer = setTimeout(() => {
-        if (socket.current.connected) setupSocket();
-    }, 1000);
-
-    return () => {
-        clearTimeout(timer);
-        if(socket.current) socket.current.disconnect();
-    };
+    const timer = setTimeout(() => { if (socket.current.connected) setupSocket(); }, 1000);
+    return () => { clearTimeout(timer); if(socket.current) socket.current.disconnect(); };
   }, [loggedInUserId]);
 
-  // --- 3. HANDLE REDIRECT ---
-  useEffect(() => {
-    if (location.state && location.state.chat) {
-        const initialChat = location.state.chat;
-        setChats(prev => {
-            if (!prev.find(c => String(getUserId(c)) === String(getUserId(initialChat)))) {
-                return [initialChat, ...prev];
-            }
-            return prev;
-        });
-        handleSelectChat(initialChat);
-        window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
+  useEffect(() => { fetchChats(); }, []);
 
-  // --- API CALLS ---
   const fetchChats = async () => {
     try {
       const { data } = await API.get("/chat");
@@ -119,18 +92,45 @@ const Chat = () => {
     } catch (error) { console.error("Error fetching chats:", error); }
   };
 
-  useEffect(() => { fetchChats(); }, []);
-
+  // --- SELECT CHAT (Fixes Read Status Logic) ---
   const handleSelectChat = async (chat) => {
       setSelectedChat(chat);
       selectedChatRef.current = chat;
       setIsMobileChatOpen(true); 
       
+      const chatId = getUserId(chat);
+
+      // 1. Optimistically mark as Read in Sidebar (Instant Gray Update)
+      setChats(prevChats => prevChats.map(c => {
+          if (String(getUserId(c)) === String(chatId) && c.latestMessage) {
+             const currentReadBy = c.latestMessage.readBy || [];
+             const alreadyRead = currentReadBy.some(id => String(id) === String(loggedInUserId));
+             
+             if (!alreadyRead) {
+                 return {
+                     ...c,
+                     latestMessage: {
+                         ...c.latestMessage,
+                         readBy: [...currentReadBy, loggedInUserId]
+                     }
+                 };
+             }
+          }
+          return c;
+      }));
+
+      // 2. Fetch Messages
       try {
-          const { data } = await API.get(`/message/${getUserId(chat)}`);
+          const { data } = await API.get(`/message/${chatId}`);
           setMessages(data);
-          socket.current.emit("join chat", getUserId(chat));
+          socket.current.emit("join chat", chatId);
       } catch (error) { console.error("Error fetching messages:", error); }
+
+      // 3. Backend Call to Mark Read
+      try {
+          await API.put("/message/read", { chatId });
+          window.dispatchEvent(new Event("chatRead")); 
+      } catch (error) { console.warn("Background read mark failed"); }
   };
 
   const handleSendMessage = async (e) => {
@@ -140,7 +140,6 @@ const Chat = () => {
     const chatId = getUserId(selectedChat);
     socket.current.emit("stop typing", chatId);
     
-    // Optimistic Update UI
     const tempMsg = {
         _id: Date.now(),
         content: newMessage,
@@ -155,42 +154,39 @@ const Chat = () => {
 
     try {
         setMessages(prev => [...prev, tempMsg]);
-
-        const { data } = await API.post("/message", {
-            content: msgToSend,
-            chatId: chatId,
-        });
-        
+        const { data } = await API.post("/message", { content: msgToSend, chatId: chatId });
         socket.current.emit("new message", data);
+        fetchChats(); 
     } catch (error) { console.error("Error sending message:", error); }
   };
 
-  // Typing Handler
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
     if (!socketConnected || !selectedChat) return;
-    
     const chatId = getUserId(selectedChat);
     socket.current.emit("typing", chatId);
-    
-    const timer = setTimeout(() => {
-        socket.current.emit("stop typing", chatId);
-    }, 3000);
+    const timer = setTimeout(() => socket.current.emit("stop typing", chatId), 3000);
     return () => clearTimeout(timer);
   };
 
-  // --- UI HELPERS ---
+  // --- SCROLL LOGIC (Fixes Footer Jump) ---
+  // Uses scrollTop instead of scrollIntoView to prevent page shifting
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+        const { scrollHeight, clientHeight } = messagesContainerRef.current;
+        messagesContainerRef.current.scrollTop = scrollHeight - clientHeight;
+    }
   };
-  useEffect(() => { scrollToBottom(); }, [messages, showEmojiPicker, isTyping]);
+  
+  // Use a small timeout to ensure DOM is ready before scrolling
+  useEffect(() => { 
+      setTimeout(scrollToBottom, 100); 
+  }, [messages, showEmojiPicker, isTyping, selectedChat]);
 
-  const onEmojiClick = (emojiObject) => {
-    setNewMessage(prev => prev + emojiObject.emoji);
-  };
-
+  const onEmojiClick = (emojiObject) => setNewMessage(prev => prev + emojiObject.emoji);
   const handleFileUpload = () => alert("Image upload backend required");
 
+  // In-Chat Search
   useEffect(() => {
     if (!inChatSearch.trim()) { setSearchMatches([]); return; }
     const matches = messages.map((msg, index) => (msg.content || "").toLowerCase().includes(inChatSearch.toLowerCase()) ? index : -1).filter(index => index !== -1);
@@ -199,7 +195,16 @@ const Chat = () => {
 
   const handleNextMatch = () => { if (searchMatches.length === 0) return; const nextIndex = (currentMatchIndex + 1) % searchMatches.length; setCurrentMatchIndex(nextIndex); scrollToMessage(searchMatches[nextIndex]); };
   const handlePrevMatch = () => { if (searchMatches.length === 0) return; const prevIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length; setCurrentMatchIndex(prevIndex); scrollToMessage(searchMatches[prevIndex]); };
-  const scrollToMessage = (index) => { const msgId = messages[index]._id; messageRefs.current[msgId]?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+  
+  const scrollToMessage = (index) => { 
+      const msgId = messages[index]._id; 
+      // Manual scroll calculation to avoid page jump
+      if(messageRefs.current[msgId] && messagesContainerRef.current) {
+         const container = messagesContainerRef.current;
+         const element = messageRefs.current[msgId];
+         container.scrollTop = element.offsetTop - container.offsetTop - (container.clientHeight / 2);
+      }
+  };
 
   const renderMessageText = (text, highlight, isActive) => {
     if (!text) return ""; if (!highlight.trim() || !isActive) return text;
@@ -246,11 +251,19 @@ const Chat = () => {
                 const isOnline = onlineUsers.includes(partnerId);
                 const isActive = selectedChat && getUserId(selectedChat) === getUserId(chat);
 
+                const latestMsg = chat.latestMessage;
+                const isSenderMe = latestMsg && String(getUserId(latestMsg.sender)) === String(loggedInUserId);
+                const readBy = latestMsg?.readBy || [];
+                const hasRead = readBy.some(id => String(id) === String(loggedInUserId));
+                const isUnread = latestMsg && !isSenderMe && !hasRead;
+
                 return (
                 <div 
                   key={getUserId(chat)}
                   onClick={() => handleSelectChat(chat)}
-                  className={`flex items-center p-4 cursor-pointer transition-colors border-b border-gray-50 hover:bg-gray-50 ${isActive ? 'bg-indigo-50 border-l-4 border-indigo-600' : ''}`}
+                  className={`flex items-center p-4 cursor-pointer transition-colors border-b border-gray-100 
+                    ${isUnread ? 'bg-white border-l-4 border-green-500' : 'bg-gray-50 hover:bg-gray-100'} 
+                    ${isActive ? 'bg-indigo-50 border-l-4 border-indigo-600' : ''}`}
                 >
                   <div className="relative flex-shrink-0">
                     <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
@@ -262,15 +275,20 @@ const Chat = () => {
                   </div>
                   <div className="ml-4 flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-1">
-                      <h3 className={`text-sm font-bold truncate ${isActive ? 'text-indigo-900' : 'text-gray-900'}`}>{partner.name}</h3>
-                      <span className="text-xs text-gray-400">
-                          {chat.latestMessage ? new Date(chat.latestMessage.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ""}
+                      <h3 className={`text-sm truncate ${isUnread ? 'font-extrabold text-black' : 'font-medium text-gray-700'} ${isActive ? 'text-indigo-900' : ''}`}>
+                          {partner.name}
+                      </h3>
+                      <span className={`text-xs ${isUnread ? 'font-bold text-green-600' : 'text-gray-400'}`}>
+                          {latestMsg ? new Date(latestMsg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ""}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <p className={`text-sm truncate ${isActive ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>
-                            {chat.latestMessage ? chat.latestMessage.content : "Start chatting"}
+                        <p className={`text-sm truncate ${isUnread ? 'font-bold text-gray-900' : 'text-gray-500'} ${isActive ? 'text-indigo-700' : ''}`}>
+                            {latestMsg ? latestMsg.content : "Start chatting"}
                         </p>
+                        {isUnread && (
+                            <span className="ml-2 h-2.5 w-2.5 bg-green-500 rounded-full"></span>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -282,7 +300,6 @@ const Chat = () => {
           <div className={`${!isMobileChatOpen ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-[#f0f2f5] relative`}>
             {selectedChat ? (
               <>
-                {/* Chat Header */}
                 <div className="p-3 sm:p-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm z-20 h-16">
                   <div className="flex items-center">
                     <button onClick={() => setIsMobileChatOpen(false)} className="md:hidden mr-3 text-gray-500 hover:text-indigo-600"><FaArrowLeft className="text-xl" /></button>
@@ -300,7 +317,6 @@ const Chat = () => {
                     </div>
                   </div>
                   
-                  {/* Header Actions */}
                   <div className="flex items-center space-x-2 text-indigo-600">
                     {showInChatSearch ? (
                         <div className="flex items-center bg-white border border-gray-300 rounded-full px-3 py-1.5 shadow-sm animate-fade-in transition-all">
@@ -318,16 +334,23 @@ const Chat = () => {
                   </div>
                 </div>
 
-                {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-pattern custom-scrollbar">
+                {/* Messages Area (With Ref for Scroll) */}
+                <div 
+                  ref={messagesContainerRef} 
+                  className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-pattern custom-scrollbar"
+                >
                   {messages.map((msg, index) => {
                     const isMe = String(getUserId(msg.sender)) === String(loggedInUserId);
                     const isCurrentMatch = searchMatches.length > 0 && searchMatches[currentMatchIndex] === index;
                     
                     return (
                         <div key={index} ref={(el) => (messageRefs.current[msg._id] = el)} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[80%] sm:max-w-[60%] px-4 py-2 rounded-2xl shadow-sm relative group transition-all duration-300 ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'} ${isCurrentMatch ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}>
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{renderMessageText(msg.content, inChatSearch, isCurrentMatch)}</p>
+                          {/* FIX: break-all and whitespace-pre-wrap ensures long words wrap */}
+                          <div className={`max-w-[80%] sm:max-w-[60%] px-4 py-2 rounded-2xl shadow-sm relative group transition-all duration-300 
+                            ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'} 
+                            ${isCurrentMatch ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}
+                          >
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-all">{renderMessageText(msg.content, inChatSearch, isCurrentMatch)}</p>
                             <div className={`text-[10px] mt-1 flex items-center justify-end space-x-1 ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>
                                 <span>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "Just now"}</span>
                                 {isMe && (<span className="ml-1"><FaCheckDouble className="text-[10px] text-blue-300" /></span>)}
@@ -337,14 +360,11 @@ const Chat = () => {
                     );
                   })}
                   
-                  {/* --- UPDATED TYPING INDICATOR --- */}
                   {isTyping && (
                     <div className="ml-4 mb-2 animate-pulse">
                         <span className="text-sm font-bold text-indigo-600">Typing...</span>
                     </div>
                   )}
-                  
-                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input Area */}
