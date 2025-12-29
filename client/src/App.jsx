@@ -23,6 +23,7 @@ import LostAndFound from "./pages/LostandFound";
 import About from "./pages/About";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Contact from "./pages/Contact";
+import Terms from "./pages/Terms";
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/terms" element={<Terms />} />
 
           {/* === PROTECTED PAGES === */}
           <Route

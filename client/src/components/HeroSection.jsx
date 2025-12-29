@@ -38,11 +38,12 @@ const Hero = () => {
   };
 
   return (
-    <div className="relative bg-indigo-900 overflow-hidden min-h-[450px] lg:h-[550px] flex items-center">
+    // FIX 1: Main Background (Indigo in Light, Gray in Dark)
+    <div className="relative bg-indigo-900 dark:bg-gray-900 overflow-hidden min-h-[450px] lg:h-[550px] flex items-center transition-colors duration-300">
       
       {/* Background Decorative Shape */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-         <div className="absolute -top-[50%] -left-[10%] w-[70%] h-[200%] bg-indigo-800/30 rounded-full blur-3xl transform rotate-12"></div>
+         <div className="absolute -top-[50%] -left-[10%] w-[70%] h-[200%] bg-indigo-800/30 dark:bg-indigo-500/10 rounded-full blur-3xl transform rotate-12 transition-colors"></div>
       </div>
 
       <div className="max-w-[95rem] mx-auto px-4 sm:px-6 lg:px-8 w-full z-10">
@@ -56,23 +57,24 @@ const Hero = () => {
                 Marketplace
               </span>
             </h1>
-            <p className="text-base sm:text-lg text-indigo-100 mb-8 max-w-lg mx-auto lg:mx-0 font-medium leading-relaxed">
+            {/* FIX 2: Subtext Color */}
+            <p className="text-base sm:text-lg text-indigo-100 dark:text-gray-300 mb-8 max-w-lg mx-auto lg:mx-0 font-medium leading-relaxed">
               Buy, sell, and find everything you need for college life right here within your campus community.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              {/* UPDATED: Increased Size */}
+              {/* FIX 3: Start Browsing Button (White -> Dark Gray) */}
               <button 
                 onClick={handleStartBrowsing}
-                className="px-8 py-3.5 bg-white text-indigo-900 font-bold rounded-xl shadow-lg hover:bg-gray-50 hover:scale-105 transition-all transform duration-200 text-base sm:text-lg"
+                className="px-8 py-3.5 bg-white dark:bg-gray-800 text-indigo-900 dark:text-white font-bold rounded-xl shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:scale-105 transition-all transform duration-200 text-base sm:text-lg"
               >
                 Start Browsing
               </button>
               
-              {/* UPDATED: Increased Size & Distinct Color (Solid lighter indigo) */}
+              {/* FIX 4: Sell Button (Indigo -> Dark Indigo) */}
               <Link 
                 to="/sell"
-                className="px-8 py-3.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-500 hover:scale-105 transition-all transform duration-200 flex items-center justify-center text-base sm:text-lg border border-transparent"
+                className="px-8 py-3.5 bg-indigo-600 dark:bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-500 dark:hover:bg-indigo-500 hover:scale-105 transition-all transform duration-200 flex items-center justify-center text-base sm:text-lg border border-transparent"
               >
                 Sell an Item
               </Link>
@@ -94,8 +96,14 @@ const Hero = () => {
                     alt={`Slide ${index + 1}`} 
                     className="w-full h-full object-cover object-center"
                   />
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-indigo-900 via-indigo-900/40 to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-indigo-900/10 lg:to-indigo-900"></div>
+                  {/* FIX 5: Gradient Overlay (Matches Background Color) */}
+                  <div className="absolute inset-0 
+                    bg-gradient-to-t from-indigo-900 via-indigo-900/40 to-transparent 
+                    dark:from-gray-900 dark:via-gray-900/40 dark:to-transparent 
+                    lg:bg-gradient-to-l lg:from-transparent lg:via-indigo-900/10 lg:to-indigo-900
+                    dark:lg:via-gray-900/10 dark:lg:to-gray-900
+                    transition-colors duration-300"
+                  ></div>
                 </div>
               ))}
             </div>
