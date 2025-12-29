@@ -32,7 +32,7 @@ const Chat = () => {
   // Refs
   const socket = useRef(null);
   const selectedChatRef = useRef(null);
-  const messagesContainerRef = useRef(null); // Ref for the container (Fixes Page Scroll)
+  const messagesContainerRef = useRef(null); 
   const fileInputRef = useRef(null);
   const messageRefs = useRef({});
 
@@ -75,6 +75,8 @@ const Chat = () => {
 
         if (activeChatId && String(activeChatId) === String(incomingChatId)) {
             setMessages(prev => [...prev, newMessageRecieved]);
+            // If chat is open, mark new message as read immediately
+            try { API.put("/message/read", { chatId: incomingChatId }); } catch(e){}
         }
         fetchChats();
     });
@@ -92,7 +94,7 @@ const Chat = () => {
     } catch (error) { console.error("Error fetching chats:", error); }
   };
 
-  // --- SELECT CHAT (Fixes Read Status Logic) ---
+  // --- HANDLE CHAT SELECTION ---
   const handleSelectChat = async (chat) => {
       setSelectedChat(chat);
       selectedChatRef.current = chat;
@@ -100,13 +102,11 @@ const Chat = () => {
       
       const chatId = getUserId(chat);
 
-      // 1. Optimistically mark as Read in Sidebar (Instant Gray Update)
+      // Optimistic Update
       setChats(prevChats => prevChats.map(c => {
           if (String(getUserId(c)) === String(chatId) && c.latestMessage) {
              const currentReadBy = c.latestMessage.readBy || [];
-             const alreadyRead = currentReadBy.some(id => String(id) === String(loggedInUserId));
-             
-             if (!alreadyRead) {
+             if (!currentReadBy.some(id => String(id) === String(loggedInUserId))) {
                  return {
                      ...c,
                      latestMessage: {
@@ -119,14 +119,12 @@ const Chat = () => {
           return c;
       }));
 
-      // 2. Fetch Messages
       try {
           const { data } = await API.get(`/message/${chatId}`);
           setMessages(data);
           socket.current.emit("join chat", chatId);
       } catch (error) { console.error("Error fetching messages:", error); }
 
-      // 3. Backend Call to Mark Read
       try {
           await API.put("/message/read", { chatId });
           window.dispatchEvent(new Event("chatRead")); 
@@ -169,8 +167,6 @@ const Chat = () => {
     return () => clearTimeout(timer);
   };
 
-  // --- SCROLL LOGIC (Fixes Footer Jump) ---
-  // Uses scrollTop instead of scrollIntoView to prevent page shifting
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
         const { scrollHeight, clientHeight } = messagesContainerRef.current;
@@ -178,7 +174,6 @@ const Chat = () => {
     }
   };
   
-  // Use a small timeout to ensure DOM is ready before scrolling
   useEffect(() => { 
       setTimeout(scrollToBottom, 100); 
   }, [messages, showEmojiPicker, isTyping, selectedChat]);
@@ -186,7 +181,7 @@ const Chat = () => {
   const onEmojiClick = (emojiObject) => setNewMessage(prev => prev + emojiObject.emoji);
   const handleFileUpload = () => alert("Image upload backend required");
 
-  // In-Chat Search
+  // In-Chat Search Logic
   useEffect(() => {
     if (!inChatSearch.trim()) { setSearchMatches([]); return; }
     const matches = messages.map((msg, index) => (msg.content || "").toLowerCase().includes(inChatSearch.toLowerCase()) ? index : -1).filter(index => index !== -1);
@@ -198,7 +193,6 @@ const Chat = () => {
   
   const scrollToMessage = (index) => { 
       const msgId = messages[index]._id; 
-      // Manual scroll calculation to avoid page jump
       if(messageRefs.current[msgId] && messagesContainerRef.current) {
          const container = messagesContainerRef.current;
          const element = messageRefs.current[msgId];
@@ -215,20 +209,21 @@ const Chat = () => {
   if (!user) return <div className="p-10 text-center text-red-500">Please Log In to Chat</div>;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 font-sans overflow-hidden">
+    // FIX 1: Use 'dvh' (dynamic viewport height) for mobile browsers
+    <div className="h-[100dvh] flex flex-col bg-gray-100 font-sans overflow-hidden">
       <Navbar />
 
-      <div className="flex-1 max-w-[95rem] w-full mx-auto p-0 sm:p-4 lg:p-6 h-[calc(100vh-64px)]">
+      <div className="flex-1 max-w-[95rem] w-full mx-auto p-0 sm:p-4 lg:p-6 h-full overflow-hidden">
         <div className="bg-white sm:rounded-2xl shadow-xl overflow-hidden h-full flex border border-gray-200">
           
           {/* --- SIDEBAR --- */}
-          <div className={`${isMobileChatOpen ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 lg:w-1/4 flex-col border-r border-gray-200 bg-white`}>
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 h-16">
+          <div className={`${isMobileChatOpen ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 lg:w-1/4 flex-col border-r border-gray-200 bg-white h-full`}>
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 h-16 shrink-0">
               <h2 className="text-xl font-bold text-gray-800">Chats</h2>
               <button className="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition"><FaEllipsisV /></button>
             </div>
 
-            <div className="p-4">
+            <div className="p-4 shrink-0">
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FaSearch className="text-gray-400" /></span>
                 <input 
@@ -255,6 +250,7 @@ const Chat = () => {
                 const isSenderMe = latestMsg && String(getUserId(latestMsg.sender)) === String(loggedInUserId);
                 const readBy = latestMsg?.readBy || [];
                 const hasRead = readBy.some(id => String(id) === String(loggedInUserId));
+                
                 const isUnread = latestMsg && !isSenderMe && !hasRead;
 
                 return (
@@ -297,10 +293,10 @@ const Chat = () => {
           </div>
 
           {/* --- MAIN CHAT WINDOW --- */}
-          <div className={`${!isMobileChatOpen ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-[#f0f2f5] relative`}>
+          <div className={`${!isMobileChatOpen ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-[#f0f2f5] relative h-full`}>
             {selectedChat ? (
               <>
-                <div className="p-3 sm:p-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm z-20 h-16">
+                <div className="p-3 sm:p-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm z-20 h-16 shrink-0">
                   <div className="flex items-center">
                     <button onClick={() => setIsMobileChatOpen(false)} className="md:hidden mr-3 text-gray-500 hover:text-indigo-600"><FaArrowLeft className="text-xl" /></button>
                     <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold mr-3 overflow-hidden">
@@ -334,7 +330,7 @@ const Chat = () => {
                   </div>
                 </div>
 
-                {/* Messages Area (With Ref for Scroll) */}
+                {/* Messages Area */}
                 <div 
                   ref={messagesContainerRef} 
                   className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-pattern custom-scrollbar"
@@ -345,7 +341,6 @@ const Chat = () => {
                     
                     return (
                         <div key={index} ref={(el) => (messageRefs.current[msg._id] = el)} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                          {/* FIX: break-all and whitespace-pre-wrap ensures long words wrap */}
                           <div className={`max-w-[80%] sm:max-w-[60%] px-4 py-2 rounded-2xl shadow-sm relative group transition-all duration-300 
                             ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'} 
                             ${isCurrentMatch ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}
@@ -367,8 +362,8 @@ const Chat = () => {
                   )}
                 </div>
 
-                {/* Input Area */}
-                <div className="p-3 sm:p-4 bg-white border-t border-gray-200 relative">
+                {/* Input Area (FIX: Made Sticky at Bottom) */}
+                <div className="p-3 sm:p-4 bg-white border-t border-gray-200 sticky bottom-0 z-30 shrink-0">
                   {showEmojiPicker && (
                       <div className="absolute bottom-20 left-4 z-30 shadow-2xl">
                           <EmojiPicker onEmojiClick={onEmojiClick} height={350} width={300} />
