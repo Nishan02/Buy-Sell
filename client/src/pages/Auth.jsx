@@ -107,6 +107,7 @@ const Auth = () => {
           password: formData.password
         });
 
+        toast.success('OTP sent successfully!');
         setLoading(false);
         setSignupStep(2); // Move to OTP step
       }

@@ -39,8 +39,8 @@ export const registerUser = async (req, res) => {
             // UPDATE existing unverified user with new details and new OTP
             userExists.name = name;
             userExists.password = hashedPassword;
-            userExists.verificationCode = otp;
-            userExists.verificationCodeExpires = otpExpires;
+            userExists.otp = otp;
+            userExists.otpExpires = otpExpires;
             user = await userExists.save();
         } else {
             // CREATE brand new user
