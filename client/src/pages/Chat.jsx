@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import EmojiPicker from 'emoji-picker-react';
 import io from 'socket.io-client';
 import API from '../api/axios';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom'; // FIX 1: Import useNavigate
 import { 
   FaSearch, FaPaperPlane, FaEllipsisV, FaSmile, FaPaperclip, 
   FaArrowLeft, FaCheckDouble, FaCircle, FaTimes, FaChevronUp, FaChevronDown, FaImage
@@ -14,6 +14,7 @@ const ENDPOINT = import.meta.env.VITE_SERVER_URL;
 
 const Chat = () => {
   const location = useLocation();
+  const navigate = useNavigate(); // FIX 2: Initialize navigate
 
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -312,6 +313,11 @@ const Chat = () => {
     return <span>{parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? (<span key={i} className="bg-orange-300 text-gray-900 font-bold px-0.5 rounded shadow-sm">{part}</span>) : (part))}</span>;
   };
 
+  // FIX 3: Navigation Handler
+  const handleViewProfile = (userId) => {
+    navigate(`/profile/view/${userId}`);
+  };
+
   if (!user) return <div className="p-10 text-center text-red-500">Please Log In to Chat</div>;
 
   return (
@@ -367,7 +373,7 @@ const Chat = () => {
                   const p = getSender(user, c.users);
                   return p.name.toLowerCase().includes(sidebarSearch.toLowerCase());
                 })
-                // 2. UPDATED SORT LOGIC: Priority to Latest Message Date
+                // 2. Sort Logic
                 .sort((a, b) => {
                     const dateA = a.latestMessage ? new Date(a.latestMessage.createdAt) : new Date(0);
                     const dateB = b.latestMessage ? new Date(b.latestMessage.createdAt) : new Date(0);
@@ -381,7 +387,7 @@ const Chat = () => {
 
                   const latestMsg = chat.latestMessage;
                   
-                  // 3. UPDATED FILTER: HIDE EMPTY CHATS FROM SIDEBAR
+                  // 3. Hide Empty Chats
                   if (!latestMsg) return null; 
 
                   const isSenderMe = String(getUserId(latestMsg.sender)) === String(loggedInUserId);
@@ -437,19 +443,26 @@ const Chat = () => {
             {selectedChat ? (
               <>
                 <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shadow-sm z-20 h-16 shrink-0 transition-colors">
+                  {/* FIX 4: Clickable Header (Name/Avatar) */}
                   <div className="flex items-center">
                     <button onClick={() => setIsMobileChatOpen(false)} className="md:hidden mr-3 text-gray-500 dark:text-gray-400 hover:text-indigo-600"><FaArrowLeft className="text-xl" /></button>
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold mr-3 overflow-hidden">
-                        {getSender(user, selectedChat.users).pic ? <img src={getSender(user, selectedChat.users).pic} className="h-full w-full object-cover" alt="" /> : getSender(user, selectedChat.users).name.charAt(0)}
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white">{getSender(user, selectedChat.users).name}</h3>
-                        <p className="text-xs font-medium flex items-center">
-                            {onlineUsers.includes(getUserId(getSender(user, selectedChat.users))) ? 
-                                <span className="text-green-500 flex items-center gap-1"><FaCircle className="text-[8px]" /> Online</span> : 
-                                <span className="text-gray-400 dark:text-gray-500">Offline</span>
-                            }
-                        </p>
+                    
+                    <div 
+                        className="flex items-center cursor-pointer hover:opacity-80 transition"
+                        onClick={() => handleViewProfile(getUserId(getSender(user, selectedChat.users)))}
+                    >
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold mr-3 overflow-hidden">
+                            {getSender(user, selectedChat.users).pic ? <img src={getSender(user, selectedChat.users).pic} className="h-full w-full object-cover" alt="" /> : getSender(user, selectedChat.users).name.charAt(0)}
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600">{getSender(user, selectedChat.users).name}</h3>
+                            <p className="text-xs font-medium flex items-center">
+                                {onlineUsers.includes(getUserId(getSender(user, selectedChat.users))) ? 
+                                    <span className="text-green-500 flex items-center gap-1"><FaCircle className="text-[8px]" /> Online</span> : 
+                                    <span className="text-gray-400 dark:text-gray-500">Offline</span>
+                                }
+                            </p>
+                        </div>
                     </div>
                   </div>
                   

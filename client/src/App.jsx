@@ -24,6 +24,7 @@ import About from "./pages/About";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Contact from "./pages/Contact";
 import Terms from "./pages/Terms";
+import PublicProfile from "./pages/PublicProfile";
 
 function App() {
   // 2. Get the current location
@@ -63,6 +64,7 @@ function App() {
           <Route path="/item/:id" element={<ItemDetails />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/passwordreset/:resetToken" element={<ResetPassword />} />
+          <Route path="/profile/view/:userId" element={<PublicProfile />} />
 
           {/* Support Pages */}
           <Route path="/about" element={<About />} />

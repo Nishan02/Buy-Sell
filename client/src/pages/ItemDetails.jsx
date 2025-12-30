@@ -4,14 +4,13 @@ import API from '../api/axios';
 import Navbar from '../components/Navbar';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaCommentDots } from 'react-icons/fa';
+import { FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaCommentDots, FaChevronRight } from 'react-icons/fa'; // Added FaChevronRight
 
 const ItemDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate(); 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [chatLoading, setChatLoading] = useState(false); // New state for chat button
   const [activeImage, setActiveImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
@@ -49,20 +48,17 @@ const ItemDetails = () => {
     }
 
     try {
-        setChatLoading(true);
-        // Create or retrieve the chat
         const { data } = await API.post('/chat', { userId: sellerId });
-        
-        // Navigate to /chats and pass the specific chat data in state
-        // NOTE: Your Chat.jsx must check 'location.state.chat' in its useEffect to open this immediately
         navigate('/chats', { state: { chat: data } }); 
-        
     } catch (error) {
         console.error("Error starting chat:", error);
         toast.error("Failed to start chat. Please try again.", { position: "top-right" });
-    } finally {
-        setChatLoading(false);
     }
+  };
+
+  const handleViewProfile = () => {
+    const sellerId = item.seller?._id || item.seller;
+    navigate(`/profile/view/${sellerId}`);
   };
 
   if (loading) return <div className="text-center py-20 font-medium text-indigo-600 dark:text-indigo-400">Loading item details...</div>;
@@ -160,7 +156,6 @@ const ItemDetails = () => {
               </div>
             </div>
 
-            {/* --- LOCATION SECTION --- */}
             <div className="mt-8">
               <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Location</h3>
               <div className="mt-3 flex items-center text-base text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
@@ -172,14 +167,20 @@ const ItemDetails = () => {
             {/* Seller Information Card */}
             <div className="mt-10 border-t border-gray-200 dark:border-gray-700 pt-8">
               <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Seller Information</h3>
-              <div className="mt-4 flex items-center p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+              
+              {/* FIX: Clickable Seller Card */}
+              <div 
+                onClick={handleViewProfile}
+                className="mt-4 flex items-center p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm cursor-pointer hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-750 transition group"
+              >
                 <div className="h-12 w-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-inner overflow-hidden">
                   {item.seller.profilePic ? <img src={item.seller.profilePic} className="h-full w-full object-cover" alt="" /> : item.seller.name.charAt(0)}
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{item.seller.name}</p>
+                <div className="ml-4 flex-1">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 transition-colors">{item.seller.name}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{item.sellerEmail || item.seller.email}</p>
                 </div>
+                <FaChevronRight className="text-gray-400 group-hover:text-indigo-500 transition" />
               </div>
             </div>
 
@@ -187,17 +188,11 @@ const ItemDetails = () => {
             <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {!item.isSold ? (
                 <>
-                  {/* --- CHAT BUTTON --- */}
                   <button
                     onClick={handleChat}
-                    disabled={chatLoading}
-                    className={`col-span-1 sm:col-span-2 flex items-center justify-center bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 dark:shadow-none active:scale-95 ${chatLoading ? 'opacity-70 cursor-wait' : ''}`}
+                    className="col-span-1 sm:col-span-2 flex items-center justify-center bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 dark:shadow-none active:scale-95"
                   >
-                    {chatLoading ? (
-                        <span>Starting Chat...</span>
-                    ) : (
-                        <><FaCommentDots className="mr-2 text-xl" /> Chat with Seller</>
-                    )}
+                    <FaCommentDots className="mr-2 text-xl" /> Chat with Seller
                   </button>
 
                   {item.contactNumber && (

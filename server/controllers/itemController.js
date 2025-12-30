@@ -215,4 +215,14 @@ export const toggleSoldStatus = async (req, res) => {
     }
 };
 
-
+export const getItemsByUser = async (req, res) => {
+    try {
+        // Fetch items where 'seller' matches the ID in the URL
+        const items = await Item.find({ seller: req.params.userId })
+                                .sort({ createdAt: -1 }); // Newest first
+        res.json(items);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
