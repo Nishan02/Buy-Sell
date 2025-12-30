@@ -27,6 +27,8 @@ const allowedOrigins = [
   "http://localhost:5173",                     // Localhost
   "http://localhost:5174",                     // Localhost (alternative)
   "https://www.kampuscart.site",   
+  "https://buy-sell-murex.vercel.app",
+  "https://kampuscart.onrender.com"
 ];
 
 app.use(cors({
