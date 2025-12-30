@@ -13,6 +13,9 @@ import { toast } from 'react-toastify';
 const ENDPOINT = import.meta.env.VITE_SERVER_URL;
 
 const Chat = () => {
+  // 1. Initialize location hook to receive data from ItemDetails
+  const location = useLocation();
+
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -89,6 +92,25 @@ const Chat = () => {
 
   useEffect(() => { fetchChats(); }, []);
 
+  // 2. NEW LOGIC: Check for redirect data and open chat
+  useEffect(() => {
+    if (location.state && location.state.chat) {
+        const chatData = location.state.chat;
+        
+        // Add to chat list locally if it doesn't exist yet (for instant UI feedback)
+        setChats(prev => {
+            const exists = prev.find(c => getUserId(c) === getUserId(chatData));
+            return exists ? prev : [chatData, ...prev];
+        });
+
+        // Select the chat
+        handleSelectChat(chatData);
+        
+        // Clear state to prevent reopening on refresh
+        window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const fetchChats = async () => {
     try {
       const { data } = await API.get("/chat");
@@ -122,7 +144,8 @@ const Chat = () => {
       try {
           const { data } = await API.get(`/message/${chatId}`);
           setMessages(data);
-          socket.current.emit("join chat", chatId);
+          // Safe check for socket before emitting
+          socket.current?.emit("join chat", chatId);
       } catch (error) { console.error("Error fetching messages:", error); }
 
       try {

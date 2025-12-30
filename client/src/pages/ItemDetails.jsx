@@ -11,6 +11,7 @@ const ItemDetails = () => {
   const navigate = useNavigate(); 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [chatLoading, setChatLoading] = useState(false); // New state for chat button
   const [activeImage, setActiveImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
@@ -48,11 +49,19 @@ const ItemDetails = () => {
     }
 
     try {
+        setChatLoading(true);
+        // Create or retrieve the chat
         const { data } = await API.post('/chat', { userId: sellerId });
+        
+        // Navigate to /chats and pass the specific chat data in state
+        // NOTE: Your Chat.jsx must check 'location.state.chat' in its useEffect to open this immediately
         navigate('/chats', { state: { chat: data } }); 
+        
     } catch (error) {
         console.error("Error starting chat:", error);
         toast.error("Failed to start chat. Please try again.", { position: "top-right" });
+    } finally {
+        setChatLoading(false);
     }
   };
 
@@ -66,7 +75,6 @@ const ItemDetails = () => {
   };
 
   return (
-    // FIX 1: Page Background
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Navbar />
       <ToastContainer />
@@ -90,7 +98,6 @@ const ItemDetails = () => {
           
           {/* LEFT: IMAGE GALLERY */}
           <div className="flex flex-col gap-4 max-w-md mx-auto lg:mx-0">
-            {/* FIX 2: Image Container Background/Border */}
             <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-80 sm:h-[450px] relative flex items-center justify-center"
                onClick={() => setIsZoomed(true)}
             >
@@ -115,7 +122,6 @@ const ItemDetails = () => {
                   <button
                     key={index}
                     onClick={() => setActiveImage(index)}
-                    // FIX 3: Thumbnails in Dark Mode
                     className={`relative h-16 w-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all bg-white dark:bg-gray-800 ${activeImage === index
                         ? 'border-indigo-600 shadow-sm'
                         : 'border-transparent opacity-50 hover:opacity-100'
@@ -132,12 +138,9 @@ const ItemDetails = () => {
           <div className="mt-10 px-4 sm:px-0 lg:mt-0">
             <div className="flex justify-between items-start">
               <div>
-                {/* FIX 4: Title Text */}
                 <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{item.title}</h1>
-                {/* FIX 5: Category Text */}
                 <p className="text-sm text-indigo-600 dark:text-indigo-400 font-bold mt-1 uppercase tracking-widest">{item.category}</p>
               </div>
-              {/* FIX 6: Status Badge (Dark mode friendly) */}
               <span className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase ${item.isSold 
                   ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
                   : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
@@ -147,13 +150,11 @@ const ItemDetails = () => {
             </div>
 
             <div className="mt-6">
-              {/* FIX 7: Price Text */}
               <p className="text-4xl text-gray-900 dark:text-white font-black">₹{item.price.toLocaleString('en-IN')}</p>
             </div>
 
             <div className="mt-8">
               <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Description</h3>
-              {/* FIX 8: Description Box */}
               <div className="mt-3 text-base text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
                 {item.description}
               </div>
@@ -162,7 +163,6 @@ const ItemDetails = () => {
             {/* --- LOCATION SECTION --- */}
             <div className="mt-8">
               <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Location</h3>
-              {/* FIX 9: Location Box */}
               <div className="mt-3 flex items-center text-base text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
                  <FaMapMarkerAlt className="text-indigo-500 dark:text-indigo-400 text-lg mr-3" />
                  <span className="font-medium">{item.location || "Location not specified by seller"}</span>
@@ -172,13 +172,11 @@ const ItemDetails = () => {
             {/* Seller Information Card */}
             <div className="mt-10 border-t border-gray-200 dark:border-gray-700 pt-8">
               <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Seller Information</h3>
-              {/* FIX 10: Seller Card */}
               <div className="mt-4 flex items-center p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
                 <div className="h-12 w-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-inner overflow-hidden">
                   {item.seller.profilePic ? <img src={item.seller.profilePic} className="h-full w-full object-cover" alt="" /> : item.seller.name.charAt(0)}
                 </div>
                 <div className="ml-4">
-                  {/* FIX 11: Seller Name & Email */}
                   <p className="text-sm font-bold text-gray-900 dark:text-white">{item.seller.name}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{item.sellerEmail || item.seller.email}</p>
                 </div>
@@ -192,9 +190,14 @@ const ItemDetails = () => {
                   {/* --- CHAT BUTTON --- */}
                   <button
                     onClick={handleChat}
-                    className="col-span-1 sm:col-span-2 flex items-center justify-center bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 dark:shadow-none active:scale-95"
+                    disabled={chatLoading}
+                    className={`col-span-1 sm:col-span-2 flex items-center justify-center bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 dark:shadow-none active:scale-95 ${chatLoading ? 'opacity-70 cursor-wait' : ''}`}
                   >
-                    <FaCommentDots className="mr-2 text-xl" /> Chat with Seller
+                    {chatLoading ? (
+                        <span>Starting Chat...</span>
+                    ) : (
+                        <><FaCommentDots className="mr-2 text-xl" /> Chat with Seller</>
+                    )}
                   </button>
 
                   {item.contactNumber && (
@@ -208,7 +211,6 @@ const ItemDetails = () => {
                     </a>
                   )}
 
-                  {/* FIX 12: Email Button (White in Light, Dark Gray in Dark) */}
                   <a
                     href={`mailto:${item.seller.email}?subject=Interest in ${item.title}`}
                     className="flex items-center justify-center bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-4 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition active:scale-95"
