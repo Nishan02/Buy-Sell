@@ -311,14 +311,7 @@ const ItemDetails = () => {
                   >
                     <FaEnvelope className="mr-2 text-lg" /> Email Seller
                   </a>
-
-                  {/* 6. UPDATED SECONDARY SHARE BUTTON */}
-                  <button 
-                     onClick={() => setShowShareModal(true)}
-                     className="sm:hidden flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 py-4 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                  >
-                     <FaShare className="mr-2" /> Share Item
-                  </button>
+                 
                 </>
               ) : (
                 <button disabled className="sm:col-span-2 w-full bg-gray-200 dark:bg-gray-800 rounded-xl py-4 text-base font-bold text-gray-400 dark:text-gray-500 cursor-not-allowed uppercase tracking-widest">

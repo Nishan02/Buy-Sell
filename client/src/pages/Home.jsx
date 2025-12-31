@@ -130,7 +130,7 @@ const Home = () => {
         <HeroSection />
 
         {/* --- FILTER & SORT SECTION --- */}
-        <section className="bg-white dark:bg-gray-800 py-8 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-20 z-40">
+        <section className="bg-white dark:bg-gray-800 py-4 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-20 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
               
