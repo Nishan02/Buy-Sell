@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   FaSearch, FaUserCircle, FaStore, FaHistory, FaTrashAlt, 
   FaHeart, FaPlus, FaSignOutAlt, FaUser, FaList, FaBullhorn, 
-  FaCommentDots, FaTimes, FaSun, FaMoon 
+  FaCommentDots, FaTimes, FaSun, FaMoon, FaUserShield 
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import API from '../api/axios'; 
@@ -239,8 +239,8 @@ const Navbar = () => {
                       </div>
                     ))}
                     <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center mt-1">
-                       <span className="text-xs text-gray-400 italic">History is saved locally</span>
-                       <button onMouseDown={handleClearAllHistory} className="text-[10px] font-bold text-gray-500 hover:text-red-600 transition flex items-center uppercase tracking-wide">
+                        <span className="text-xs text-gray-400 italic">History is saved locally</span>
+                        <button onMouseDown={handleClearAllHistory} className="text-[10px] font-bold text-gray-500 hover:text-red-600 transition flex items-center uppercase tracking-wide">
                         <FaTrashAlt className="mr-1.5" /> Clear All
                       </button>
                     </div>
@@ -253,17 +253,23 @@ const Navbar = () => {
           {/* 3. RIGHT: Actions */}
           <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
             
-            {/* FIX 1: Wishlist Logic
-               - Logged In (token exists): Show everywhere ("flex")
-               - Logged Out (!token): Hide on mobile ("hidden sm:flex")
-            */}
             <div className={token ? "flex" : "hidden sm:flex"}>
                 <NavItem to="/wishlist" icon={FaHeart} label="Wishlist" />
             </div>
 
-            {/* Always show Lost & Found */}
             <NavItem to="/lost-and-found" icon={FaBullhorn} label="Lost & Found" />
             
+            {/* --- ADMIN BUTTON (Desktop: Visible md and up) --- */}
+            {user && user.isAdmin && (
+               <Link
+                 to="/admin"
+                 className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 border border-transparent text-sm font-bold rounded-full shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all transform hover:-translate-y-0.5 mx-2"
+               >
+                 <FaUserShield className="text-xs" />
+                 Admin
+               </Link>
+            )}
+
             {/* Sell Button: Desktop Only */}
             <Link
                 to="/sell"
@@ -293,7 +299,7 @@ const Navbar = () => {
                   )}
                   <div className="hidden lg:flex flex-col items-start mr-1">
                       <span className="text-sm font-bold text-gray-700 dark:text-gray-200 leading-none">{user?.name?.split(' ')[0] || 'User'}</span>
-                      <span className="text-[10px] font-medium text-gray-400 leading-none mt-0.5">My Profile</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 leading-none mt-0.5">My Profile</span>
                   </div>
                 </button>
                 {/* Dropdown Menu */}
@@ -305,6 +311,14 @@ const Navbar = () => {
                     </div>
                     <div className="py-2">
                       <Link to="/profile" className="group flex items-center px-6 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"><FaUser className="mr-3 text-gray-400 group-hover:text-indigo-500" /> Your Profile</Link>
+                      
+                      {/* --- ADMIN BUTTON (Dropdown: Visible ONLY on mobile via md:hidden) --- */}
+                      {user && user.isAdmin && (
+                        <Link to="/admin" className="md:hidden group flex items-center px-6 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 font-bold bg-red-50/50 dark:bg-red-900/5">
+                            <FaUserShield className="mr-3 text-red-500" /> Admin Panel
+                        </Link>
+                      )}
+
                       <Link to="/my-listings" className="group flex items-center px-6 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"><FaList className="mr-3 text-gray-400 group-hover:text-indigo-500" /> My Listings</Link>
                       
                       <button 
@@ -341,7 +355,7 @@ const Navbar = () => {
                   onClick={toggleTheme}
                   className="ml-1 sm:ml-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-yellow-400 transition-colors"
                 >
-                   {theme === 'dark' ? <FaSun className="text-sm sm:text-base" /> : <FaMoon className="text-sm sm:text-base" />}
+                    {theme === 'dark' ? <FaSun className="text-sm sm:text-base" /> : <FaMoon className="text-sm sm:text-base" />}
                 </button>
               </div>
             )}

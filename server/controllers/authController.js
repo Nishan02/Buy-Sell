@@ -131,6 +131,33 @@ export const loginUser = async (req, res) => {
             return res.status(400).json({ message: "Invalid credentials" });
         }
 
+        // --- 🛑 NEW: BAN CHECK LOGIC 🛑 ---
+        if (user.isBanned) {
+            const currentDate = new Date();
+
+            // A. Check if the ban has expired (for temporary bans)
+            if (user.banExpiresAt && currentDate > new Date(user.banExpiresAt)) {
+                // Auto-Unban the user
+                user.isBanned = false;
+                user.banExpiresAt = null;
+                await user.save();
+                // Code continues below to allow login...
+            } else {
+                // B. User is still banned -> Return 403 Forbidden
+                let banMessage = 'Your account has been permanently banned.';
+
+                if (user.banExpiresAt) {
+                    const expiryDate = new Date(user.banExpiresAt);
+                    const diffTime = Math.abs(expiryDate - currentDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    banMessage = `Your account is suspended for ${diffDays} more day(s).`;
+                }
+
+                return res.status(403).json({ message: banMessage });
+            }
+        }
+        // --- ✅ END BAN CHECK ---
+
         // 4. Generate JWT
         const token = jwt.sign(
             { id: user._id }, 
@@ -138,14 +165,14 @@ export const loginUser = async (req, res) => {
             { expiresIn: '7d' } 
         );
 
-        // --- UPDATED RESPONSE ---
+        // 5. Send Response
         res.status(200).json({
             token,
             user: {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                // Add these lines so the frontend gets the data:
+                isAdmin: user.isAdmin,
                 profilePic: user.profilePic, 
                 coverImage: user.coverImage,
                 phone: user.phone,
@@ -157,7 +184,6 @@ export const loginUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
 
 // authController.js
 

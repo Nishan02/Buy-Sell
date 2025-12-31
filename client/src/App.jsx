@@ -1,5 +1,5 @@
 // src/App.jsx
-import { Routes, Route, useLocation } from "react-router-dom"; // 1. Import useLocation
+import { Routes, Route, useLocation } from "react-router-dom"; 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ScrollToTop from "./components/ScrollToTop";
@@ -25,13 +25,12 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Contact from "./pages/Contact";
 import Terms from "./pages/Terms";
 import PublicProfile from "./pages/PublicProfile";
+import AdminDashboard from "./pages/AdminDashboard"; // <--- 1. Import Admin Page
 
 function App() {
-  // 2. Get the current location
   const location = useLocation();
 
-  // 3. Define paths where the footer should be hidden
-  // You can add '/login' or '/signup' here if you want to hide it there too
+  // Define paths where the footer should be hidden
   const hideFooter = location.pathname === '/chats'; 
 
   return (
@@ -73,6 +72,17 @@ function App() {
           <Route path="/terms" element={<Terms />} />
 
           {/* === PROTECTED PAGES === */}
+          
+          {/* 2. Add Admin Route */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/sell"
             element={
@@ -148,7 +158,7 @@ function App() {
         </Routes>
       </div>
 
-      {/* 4. Conditionally Render Footer */}
+      {/* Conditionally Render Footer */}
       {!hideFooter && <Footer />}
     </div>
   );
