@@ -39,6 +39,8 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); 
 
+
+
 // Register Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
@@ -48,6 +50,14 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/message', messageRoutes); 
 app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminRoutes);
+
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
 
 
 app.get('/', (req, res) => {
