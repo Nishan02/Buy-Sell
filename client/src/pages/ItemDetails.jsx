@@ -4,7 +4,12 @@ import API from '../api/axios';
 import Navbar from '../components/Navbar';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaCommentDots, FaChevronRight } from 'react-icons/fa'; // Added FaChevronRight
+// 1. UPDATED IMPORTS: Added FaFacebook, FaTwitter, FaLink, FaTimes
+import { 
+  FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaCommentDots, 
+  FaChevronRight, FaShare, FaFacebook, FaTwitter, FaLink, FaTimes 
+} from 'react-icons/fa'; 
+import { Helmet } from 'react-helmet-async'; 
 
 const ItemDetails = () => {
   const { id } = useParams();
@@ -13,6 +18,9 @@ const ItemDetails = () => {
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
+  
+  // 2. NEW STATE for Share Modal
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -61,12 +69,38 @@ const ItemDetails = () => {
     navigate(`/profile/view/${sellerId}`);
   };
 
+  // 3. SHARE FUNCTIONS
+  const currentUrl = window.location.href;
+  
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      toast.success("Link copied to clipboard!");
+      setShowShareModal(false); // Close modal after copying
+    } catch (err) {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  const shareToFacebook = () => {
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`;
+    window.open(facebookUrl, '_blank');
+    setShowShareModal(false);
+  };
+
+  const shareToTwitter = () => {
+    const text = `Check out ${item.title} on KampusCart!`;
+    const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(text)}`;
+    window.open(twitterUrl, '_blank');
+    setShowShareModal(false);
+  };
+
   if (loading) return <div className="text-center py-20 font-medium text-indigo-600 dark:text-indigo-400">Loading item details...</div>;
   if (!item) return <div className="text-center py-20 text-gray-600 dark:text-gray-300">Item not found.</div>;
 
   const getWhatsappLink = (number, title) => {
     const cleanNumber = number.replace(/\D/g, '');
-    const message = encodeURIComponent(`Hi, I'm interested in your listing: ${title} on CampusMart.`);
+    const message = encodeURIComponent(`Hi, I'm interested in your listing: ${title} on CampusMart. Check it out here: ${window.location.href}`);
     return `https://wa.me/${cleanNumber}?text=${message}`;
   };
 
@@ -74,7 +108,8 @@ const ItemDetails = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Navbar />
       <ToastContainer />
-
+      
+      {/* ZOOM MODAL */}
       {isZoomed && (
         <div
           className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-10 cursor-zoom-out"
@@ -86,6 +121,60 @@ const ItemDetails = () => {
             className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
             alt="Full size preview"
           />
+        </div>
+      )}
+
+      {/* 4. NEW: SHARE MODAL POPUP */}
+      {showShareModal && (
+        <div 
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowShareModal(false)}
+        >
+          {/* Modal Content */}
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100"
+            onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
+          >
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">Share this item</h3>
+              <button onClick={() => setShowShareModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <FaTimes />
+              </button>
+            </div>
+            
+            <div className="p-6 flex justify-around items-center">
+              {/* Facebook */}
+              <button onClick={shareToFacebook} className="flex flex-col items-center gap-2 group">
+                <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <FaFacebook className="text-2xl text-[#1877F2]" />
+                </div>
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Facebook</span>
+              </button>
+
+              {/* Twitter / X */}
+              <button onClick={shareToTwitter} className="flex flex-col items-center gap-2 group">
+                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <FaTwitter className="text-2xl text-[#1DA1F2]" />
+                </div>
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Twitter</span>
+              </button>
+
+              {/* Copy Link */}
+              <button onClick={copyLink} className="flex flex-col items-center gap-2 group">
+                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <FaLink className="text-xl text-gray-600 dark:text-gray-300" />
+                </div>
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Copy Link</span>
+              </button>
+            </div>
+            
+            <div className="px-6 pb-6 pt-2">
+                 <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+                    <span className="truncate mr-2">{currentUrl}</span>
+                    <span className="font-bold text-indigo-600 cursor-pointer" onClick={copyLink}>COPY</span>
+                 </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -133,16 +222,27 @@ const ItemDetails = () => {
           {/* RIGHT: ITEM INFO */}
           <div className="mt-10 px-4 sm:px-0 lg:mt-0">
             <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{item.title}</h1>
+              <div className="flex-1 pr-4">
+                <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">{item.title}</h1>
                 <p className="text-sm text-indigo-600 dark:text-indigo-400 font-bold mt-1 uppercase tracking-widest">{item.category}</p>
               </div>
-              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase ${item.isSold 
-                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
-                  : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              }`}>
-                {item.isSold ? 'SOLD' : 'AVAILABLE'}
-              </span>
+              <div className="flex flex-col items-end gap-2">
+                 <span className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase ${item.isSold 
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                 }`}>
+                  {item.isSold ? 'SOLD' : 'AVAILABLE'}
+                 </span>
+                 
+                 {/* 5. UPDATED SHARE BUTTON ACTION */}
+                 <button 
+                    onClick={() => setShowShareModal(true)} 
+                    className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                    title="Share this item"
+                 >
+                    <FaShare size={20} />
+                 </button>
+              </div>
             </div>
 
             <div className="mt-6">
@@ -151,7 +251,7 @@ const ItemDetails = () => {
 
             <div className="mt-8">
               <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Description</h3>
-              <div className="mt-3 text-base text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+              <div className="mt-3 text-base text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm whitespace-pre-line">
                 {item.description}
               </div>
             </div>
@@ -168,7 +268,6 @@ const ItemDetails = () => {
             <div className="mt-10 border-t border-gray-200 dark:border-gray-700 pt-8">
               <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Seller Information</h3>
               
-              {/* FIX: Clickable Seller Card */}
               <div 
                 onClick={handleViewProfile}
                 className="mt-4 flex items-center p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm cursor-pointer hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-750 transition group"
@@ -212,6 +311,14 @@ const ItemDetails = () => {
                   >
                     <FaEnvelope className="mr-2 text-lg" /> Email Seller
                   </a>
+
+                  {/* 6. UPDATED SECONDARY SHARE BUTTON */}
+                  <button 
+                     onClick={() => setShowShareModal(true)}
+                     className="sm:hidden flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 py-4 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                  >
+                     <FaShare className="mr-2" /> Share Item
+                  </button>
                 </>
               ) : (
                 <button disabled className="sm:col-span-2 w-full bg-gray-200 dark:bg-gray-800 rounded-xl py-4 text-base font-bold text-gray-400 dark:text-gray-500 cursor-not-allowed uppercase tracking-widest">
