@@ -38,7 +38,8 @@ const AdminDashboard = () => {
                 setStats(data);
             } else if (activeTab === 'users') {
                 const { data } = await API.get('/admin/users');
-                setUsers(data);
+                const verifiedUsersOnly = data.filter(u => u.isVerified);
+                setUsers(verifiedUsersOnly);
             } else if (activeTab === 'items') {
                 const { data } = await API.get('/admin/items');
                 setItems(data);

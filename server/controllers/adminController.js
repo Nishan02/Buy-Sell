@@ -6,7 +6,7 @@ import asyncHandler from 'express-async-handler';
 // @route   GET /api/admin/stats
 export const getAdminStats = async (req, res) => {
     try {
-        const usersCount = await User.countDocuments();
+        const usersCount = await User.countDocuments({ isVerified: true });
         const itemsCount = await Item.countDocuments();
         const soldItemsCount = await Item.countDocuments({ isSold: true });
 
