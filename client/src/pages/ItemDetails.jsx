@@ -1,27 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom'; 
 import API from '../api/axios';
 import Navbar from '../components/Navbar';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-// 1. UPDATED IMPORTS: Added FaFlag (Report Icon)
-import {
-  FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaCommentDots,
-  FaChevronRight, FaShare, FaFacebook, FaTwitter, FaLink, FaTimes, FaFlag
-} from 'react-icons/fa';
+import { 
+  FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaCommentDots, 
+  FaChevronRight, FaShare, FaFacebook, FaTwitter, FaLink, FaTimes, FaFlag 
+} from 'react-icons/fa'; 
 
 const ItemDetails = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
-
+  
   // State for Modals
   const [showShareModal, setShowShareModal] = useState(false);
-
-  // 2. NEW STATE for Report Modal
+  
+  // State for Report Modal
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [isReporting, setIsReporting] = useState(false);
@@ -44,24 +43,24 @@ const ItemDetails = () => {
   const handleChat = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      toast.error("Please login to chat!", { position: "top-right" });
-      navigate('/login');
-      return;
+        toast.error("Please login to chat!", { position: "top-right" });
+        navigate('/login');
+        return;
     }
     const user = JSON.parse(localStorage.getItem('user'));
     const currentUserId = user._id || user.id;
     const sellerId = item.seller?._id || item.seller;
 
     if (String(currentUserId) === String(sellerId)) {
-      toast.info("You cannot chat with yourself!", { position: "top-right" });
-      return;
+        toast.info("You cannot chat with yourself!", { position: "top-right" });
+        return;
     }
 
     try {
-      const { data } = await API.post('/chat', { userId: sellerId });
-      navigate('/chats', { state: { chat: data } });
+        const { data } = await API.post('/chat', { userId: sellerId });
+        navigate('/chats', { state: { chat: data } }); 
     } catch (error) {
-      toast.error("Failed to start chat.");
+        toast.error("Failed to start chat.");
     }
   };
 
@@ -86,29 +85,27 @@ const ItemDetails = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(text + ' ' + currentUrl)}`;
     window.open(url, '_blank');
   };
-  // 3. REPORT FUNCTION
+
+  // REPORT FUNCTION
   const handleReportSubmit = async () => {
     if (!reportReason) return toast.warning("Please select a reason.");
-
+    
     const token = localStorage.getItem('token');
     if (!token) {
-      toast.error("Please login to report items.");
-      return navigate('/login');
+        toast.error("Please login to report items.");
+        return navigate('/login');
     }
 
     try {
-      setIsReporting(true);
-      // We will implement this route in Backend next
-      await API.post(`/items/${id}/report`, { reason: reportReason });
-
-      toast.success("Item reported to Admin. Thank you for keeping our community safe!");
-      setShowReportModal(false);
+        setIsReporting(true);
+        await API.post(`/items/${id}/report`, { reason: reportReason });
+        toast.success("Item reported to Admin. Thank you for keeping our community safe!");
+        setShowReportModal(false);
     } catch (error) {
-      // If specific error from backend (e.g. "Already reported")
-      const msg = error.response?.data?.message || "Failed to report item.";
-      toast.error(msg);
+        const msg = error.response?.data?.message || "Failed to report item.";
+        toast.error(msg);
     } finally {
-      setIsReporting(false);
+        setIsReporting(false);
     }
   };
 
@@ -121,11 +118,16 @@ const ItemDetails = () => {
   if (loading) return <div className="text-center py-20 font-medium text-indigo-600">Loading...</div>;
   if (!item) return <div className="text-center py-20 text-gray-600">Item not found.</div>;
 
+  // 🔴 HELPER CONSTANTS FOR DISPLAY 🔴
+  // Prioritize Item-specific data (Custom Name/Email), fallback to User Profile data
+  const displayName = item.sellerName || item.seller.name;
+  const displayEmail = item.sellerEmail || item.seller.email;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Navbar />
       <ToastContainer />
-
+      
       {/* ZOOM MODAL */}
       {isZoomed && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setIsZoomed(false)}>
@@ -135,59 +137,23 @@ const ItemDetails = () => {
 
       {/* SHARE MODAL */}
       {showShareModal && (
-        <div
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={() => setShowShareModal(false)}
-        >
-          {/* Modal Content */}
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100"
-            onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
-          >
-            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">Share this item</h3>
-              <button onClick={() => setShowShareModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                <FaTimes />
-              </button>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 border-b pb-4 dark:border-gray-700">
+              <h3 className="font-bold dark:text-white">Share Item</h3>
+              <button onClick={() => setShowShareModal(false)}><FaTimes className="text-gray-400" /></button>
             </div>
-
-            <div className="p-6 flex justify-around items-center">
-              {/* Facebook */}
-              <button onClick={shareToFacebook} className="flex flex-col items-center gap-2 group">
-                <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <FaFacebook className="text-2xl text-[#1877F2]" />
-                </div>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Facebook</span>
-              </button>
-
-              {/* Twitter / X */}
-              <button onClick={shareToTwitter} className="flex flex-col items-center gap-2 group">
-                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <FaTwitter className="text-2xl text-[#1DA1F2]" />
-                </div>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Twitter</span>
-              </button>
-
-              {/* Copy Link */}
-              {/* WhatsApp */}
-              <button onClick={shareToWhatsapp} className="flex flex-col items-center gap-2 group">
-                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <FaWhatsapp className="text-2xl text-[#25D366]" />
-                </div>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">WhatsApp</span>
-              </button>
-            </div>
-
-            <div className="px-6 pb-6 pt-2">
-              <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-                <span className="truncate mr-2">{currentUrl}</span>
-                <span className="font-bold text-indigo-600 cursor-pointer" onClick={copyLink}>COPY</span>
-              </div>
+            <div className="flex justify-around mb-4">
+              <button onClick={shareToFacebook} className="flex flex-col items-center gap-1"><FaFacebook className="text-3xl text-blue-600" /><span className="text-xs dark:text-gray-300">Facebook</span></button>
+              <button onClick={shareToTwitter} className="flex flex-col items-center gap-1"><FaTwitter className="text-3xl text-blue-400" /><span className="text-xs dark:text-gray-300">Twitter</span></button>
+              <button onClick={shareToWhatsapp} className="flex flex-col items-center gap-1"><FaWhatsapp className="text-3xl text-green-500" /><span className="text-xs dark:text-gray-300">WhatsApp</span></button>
+              <button onClick={copyLink} className="flex flex-col items-center gap-1"><FaLink className="text-3xl text-gray-600" /><span className="text-xs dark:text-gray-300">Copy</span></button>
             </div>
           </div>
         </div>
       )}
-      {/* 4. NEW: REPORT MODAL */}
+
+      {/* REPORT MODAL */}
       {showReportModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowReportModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -196,27 +162,21 @@ const ItemDetails = () => {
               <button onClick={() => setShowReportModal(false)}><FaTimes className="text-gray-400" /></button>
             </div>
             <div className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Why are you reporting this? This helps Admins keep the campus safe.</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Why are you reporting this?</p>
               <div className="space-y-2">
                 {['Spam / Misleading', 'Fraud / Scam', 'Inappropriate Content', 'Duplicate Listing', 'Item Already Sold'].map((reason) => (
-                  <label key={reason} className="flex items-center space-x-3 p-3 rounded-lg border dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <input
-                      type="radio"
-                      name="reportReason"
-                      value={reason}
-                      checked={reportReason === reason}
-                      onChange={(e) => setReportReason(e.target.value)}
-                      className="text-red-600 focus:ring-red-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{reason}</span>
-                  </label>
+                    <label key={reason} className="flex items-center space-x-3 p-3 rounded-lg border dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <input 
+                            type="radio" name="reportReason" value={reason} 
+                            checked={reportReason === reason}
+                            onChange={(e) => setReportReason(e.target.value)}
+                            className="text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{reason}</span>
+                    </label>
                 ))}
               </div>
-              <button
-                onClick={handleReportSubmit}
-                disabled={isReporting}
-                className="w-full mt-6 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition disabled:opacity-50"
-              >
+              <button onClick={handleReportSubmit} disabled={isReporting} className="w-full mt-6 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition disabled:opacity-50">
                 {isReporting ? 'Sending...' : 'Submit Report'}
               </button>
             </div>
@@ -227,7 +187,7 @@ const ItemDetails = () => {
       {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 lg:items-start">
-
+          
           {/* LEFT: IMAGES */}
           <div className="flex flex-col gap-4 max-w-md mx-auto lg:mx-0">
             <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 h-80 sm:h-[450px] relative flex items-center justify-center cursor-zoom-in" onClick={() => setIsZoomed(true)}>
@@ -251,22 +211,16 @@ const ItemDetails = () => {
                 <h1 className="text-3xl font-black text-gray-900 dark:text-white leading-tight">{item.title}</h1>
                 <p className="text-sm text-indigo-600 dark:text-indigo-400 font-bold mt-1 uppercase">{item.category}</p>
               </div>
-
+              
               <div className="flex flex-col items-end gap-2">
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${item.isSold ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                 <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${item.isSold ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                   {item.isSold ? 'SOLD' : 'AVAILABLE'}
-                </span>
-
-                <div className="flex gap-1">
-                  {/* Share Button */}
-                  <button onClick={() => setShowShareModal(true)} className="p-2 text-gray-400 hover:text-indigo-600 transition" title="Share">
-                    <FaShare size={18} />
-                  </button>
-                  {/* 5. REPORT BUTTON */}
-                  <button onClick={() => setShowReportModal(true)} className="p-2 text-gray-400 hover:text-red-600 transition" title="Report this item">
-                    <FaFlag size={18} />
-                  </button>
-                </div>
+                 </span>
+                 
+                 <div className="flex gap-1">
+                    <button onClick={() => setShowShareModal(true)} className="p-2 text-gray-400 hover:text-indigo-600 transition"><FaShare size={18} /></button>
+                    <button onClick={() => setShowReportModal(true)} className="p-2 text-gray-400 hover:text-red-600 transition"><FaFlag size={18} /></button>
+                 </div>
               </div>
             </div>
 
@@ -284,21 +238,24 @@ const ItemDetails = () => {
             <div className="mt-8">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Location</h3>
               <div className="mt-3 flex items-center text-base text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-4 rounded-2xl border dark:border-gray-700 shadow-sm">
-                <FaMapMarkerAlt className="text-indigo-500 mr-3" />
-                <span className="font-medium">{item.location || "Not specified"}</span>
+                 <FaMapMarkerAlt className="text-indigo-500 mr-3" />
+                 <span className="font-medium">{item.location || "Not specified"}</span>
               </div>
             </div>
 
-            {/* Seller Card */}
+            {/* Seller Card (UPDATED) */}
             <div className="mt-10 border-t dark:border-gray-700 pt-8">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Seller</h3>
               <div onClick={handleViewProfile} className="mt-4 flex items-center p-4 bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 shadow-sm cursor-pointer hover:shadow-md transition">
                 <div className="h-12 w-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xl overflow-hidden">
-                  {item.seller.profilePic ? <img src={item.seller.profilePic} className="h-full w-full object-cover" alt="" /> : item.seller.name.charAt(0)}
+                  {/* Updated Avatar Initial Logic */}
+                  {item.seller.profilePic ? <img src={item.seller.profilePic} className="h-full w-full object-cover" alt="" /> : displayName.charAt(0)}
                 </div>
                 <div className="ml-4 flex-1">
-                  <p className="font-bold text-gray-900 dark:text-white">{item.seller.name}</p>
-                  <p className="text-xs text-gray-500">{item.sellerEmail || item.seller.email}</p>
+                  {/* Updated Name Logic */}
+                  <p className="font-bold text-gray-900 dark:text-white">{displayName}</p>
+                  {/* Updated Email Logic */}
+                  <p className="text-xs text-gray-500">{displayEmail}</p>
                 </div>
                 <FaChevronRight className="text-gray-400" />
               </div>
@@ -316,11 +273,12 @@ const ItemDetails = () => {
                       <FaWhatsapp className="mr-2 text-2xl" /> WhatsApp
                     </a>
                   )}
-                  <a href={`mailto:${item.seller.email}`} className="flex items-center justify-center bg-white dark:bg-gray-800 border-2 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-4 rounded-xl font-bold hover:bg-gray-50 transition">
+                  {/* Updated Email Button Link */}
+                  <a href={`mailto:${displayEmail}`} className="flex items-center justify-center bg-white dark:bg-gray-800 border-2 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-4 rounded-xl font-bold hover:bg-gray-50 transition">
                     <FaEnvelope className="mr-2 text-lg" /> Email
                   </a>
                   <button onClick={() => setShowShareModal(true)} className="sm:hidden flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 py-4 rounded-xl font-bold">
-                    <FaShare className="mr-2" /> Share
+                     <FaShare className="mr-2" /> Share
                   </button>
                 </>
               ) : (

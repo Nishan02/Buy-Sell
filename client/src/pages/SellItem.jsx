@@ -83,6 +83,10 @@ const SellItem = () => {
       data.append('contactNumber', `91${rawPhone}`); 
       data.append('description', formData.description);
 
+      // ✅ ADDED THESE TWO LINES (This fixes the issue)
+      data.append('sellerName', formData.sellerName);
+      data.append('sellerEmail', formData.sellerEmail);
+
       imageFiles.forEach((file) => {
         data.append('images', file); 
       });
@@ -114,7 +118,6 @@ const SellItem = () => {
   };
 
   return (
-    // FIX 1: Main Background
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans pb-20 transition-colors duration-200">
       <Navbar />
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar'; 
-import { FaCloudUploadAlt, FaRupeeSign, FaMapMarkerAlt, FaTag, FaCamera, FaUser, FaPhone, FaEnvelope, FaTrash, FaSave, FaArrowLeft, FaEye, FaTimesCircle } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaRupeeSign, FaMapMarkerAlt, FaTag, FaCamera, FaUser, FaPhone, FaEnvelope, FaTrash, FaSave, FaArrowLeft, FaTimesCircle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const EditItem = () => {
@@ -47,9 +47,9 @@ const EditItem = () => {
           category: isOther ? 'Others' : data.category,
           customCategory: isOther ? data.category : '',
           location: data.location || '', 
-          sellerName: data.seller?.name || '', 
+          sellerName: data.sellerName || data.seller?.name || '', 
           sellerPhone: data.contactNumber ? data.contactNumber.replace(/^91/, '') : '',
-          sellerEmail: data.seller?.email || '',
+          sellerEmail: data.sellerEmail || data.seller?.email || '',
         });
 
         if (data.images && data.images.length > 0) {
@@ -114,6 +114,9 @@ const EditItem = () => {
       data.append('location', formData.location);
       
       data.append('contactNumber', `91${formData.sellerPhone.replace(/\D/g, '')}`);
+      
+      data.append('sellerName', formData.sellerName);
+      data.append('sellerEmail', formData.sellerEmail);
 
       const existingUrls = previews.filter(p => typeof p === 'string' && p.startsWith('http'));
       data.append('existingImages', JSON.stringify(existingUrls));
@@ -145,11 +148,9 @@ const EditItem = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-indigo-600 dark:text-indigo-400 bg-gray-50 dark:bg-gray-900 transition-colors">Loading...</div>;
 
   return (
-    // FIX 1: Main Background
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 font-sans pb-20 transition-colors duration-200">
       <Navbar />
 
-      {/* FIX 2: Sticky Header Background */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-16 z-30 shadow-sm transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -172,7 +173,6 @@ const EditItem = () => {
                     )}
 
                     {/* Media Section */}
-                    {/* FIX 3: Card Background */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
                         <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">Photos (Max 3)</h3>
                         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -204,7 +204,6 @@ const EditItem = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">Item Title</label>
-                                {/* FIX 4: Inputs (Dark Mode) */}
                                 <input type="text" name="title" required value={formData.title} onChange={handleChange} className="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-gray-600 focus:ring-indigo-500 rounded-xl px-4 py-3 transition-colors" />
                             </div>
                             
@@ -214,7 +213,16 @@ const EditItem = () => {
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <FaRupeeSign className="text-gray-400 dark:text-gray-500" />
                                     </div>
-                                    <input type="number" name="price" required value={formData.price} onChange={handleChange} className="block w-full pl-10 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-gray-600 focus:ring-indigo-500 rounded-xl py-3 transition-colors" />
+                                    {/* FIX: Added onWheel to prevent scroll changes */}
+                                    <input 
+                                      type="number" 
+                                      name="price" 
+                                      required 
+                                      value={formData.price} 
+                                      onChange={handleChange} 
+                                      onWheel={(e) => e.target.blur()} 
+                                      className="block w-full pl-10 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-gray-600 focus:ring-indigo-500 rounded-xl py-3 transition-colors" 
+                                    />
                                 </div>
                             </div>
 
