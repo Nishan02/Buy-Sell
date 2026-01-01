@@ -243,7 +243,7 @@ export const forgotPassword = async (req, res) => {
 
     // Create the Reset URL (Frontend Route)
     // Make sure 'localhost:5173' matches your Frontend Port
-    const resetUrl = `http://localhost:5173/passwordreset/${resetToken}`;
+    const resetUrl = `https://kampuscart.site/passwordreset/${resetToken}`;
 
     try {
       await sendEmail({
