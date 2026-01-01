@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import EmojiPicker from 'emoji-picker-react';
 import io from 'socket.io-client';
 import API from '../api/axios';
-import { useLocation, useNavigate } from 'react-router-dom'; // FIX 1: Import useNavigate
+import { useLocation, useNavigate } from 'react-router-dom'; 
 import { 
   FaSearch, FaPaperPlane, FaEllipsisV, FaSmile, FaPaperclip, 
   FaArrowLeft, FaCheckDouble, FaCircle, FaTimes, FaChevronUp, FaChevronDown, FaImage
@@ -14,7 +14,7 @@ const ENDPOINT = import.meta.env.VITE_SERVER_URL;
 
 const Chat = () => {
   const location = useLocation();
-  const navigate = useNavigate(); // FIX 2: Initialize navigate
+  const navigate = useNavigate();
 
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -313,7 +313,6 @@ const Chat = () => {
     return <span>{parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? (<span key={i} className="bg-orange-300 text-gray-900 font-bold px-0.5 rounded shadow-sm">{part}</span>) : (part))}</span>;
   };
 
-  // FIX 3: Navigation Handler
   const handleViewProfile = (userId) => {
     navigate(`/profile/view/${userId}`);
   };
@@ -321,10 +320,13 @@ const Chat = () => {
   if (!user) return <div className="p-10 text-center text-red-500">Please Log In to Chat</div>;
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-gray-100 dark:bg-gray-900 font-sans overflow-hidden transition-colors duration-200">
-      <Navbar />
+    // FIX 5: Layout Structure Change to prevent white bar
+    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 font-sans overflow-hidden fixed inset-0">
+      <div className="flex-none z-50 relative">
+         <Navbar />
+      </div>
 
-      <div className="flex-1 max-w-[95rem] w-full mx-auto p-0 sm:p-4 lg:p-6 h-full overflow-hidden">
+      <div className="flex-1 w-full max-w-[95rem] mx-auto p-0 sm:p-4 lg:p-6 h-[calc(100vh-80px)] overflow-hidden relative">
         <div className="bg-white dark:bg-gray-800 sm:rounded-2xl shadow-xl overflow-hidden h-full flex border border-gray-200 dark:border-gray-700 relative">
           
           {/* --- IMAGE PREVIEW MODAL --- */}
@@ -443,7 +445,7 @@ const Chat = () => {
             {selectedChat ? (
               <>
                 <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shadow-sm z-20 h-16 shrink-0 transition-colors">
-                  {/* FIX 4: Clickable Header (Name/Avatar) */}
+                  {/* Header (Name/Avatar) */}
                   <div className="flex items-center">
                     <button onClick={() => setIsMobileChatOpen(false)} className="md:hidden mr-3 text-gray-500 dark:text-gray-400 hover:text-indigo-600"><FaArrowLeft className="text-xl" /></button>
                     
@@ -485,7 +487,7 @@ const Chat = () => {
 
                 <div 
                   ref={messagesContainerRef} 
-                  className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-pattern custom-scrollbar"
+                  className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-pattern custom-scrollbar pb-24 sm:pb-4"
                 >
                   {messages.map((msg, index) => {
                     const isMe = String(getUserId(msg.sender)) === String(loggedInUserId);
@@ -516,7 +518,7 @@ const Chat = () => {
                   )}
                 </div>
 
-                <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 z-30 shrink-0 transition-colors">
+                <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 absolute bottom-0 left-0 right-0 z-30 shrink-0 transition-colors">
                   {showEmojiPicker && (
                       <div className="absolute bottom-20 left-4 z-30 shadow-2xl">
                           <EmojiPicker onEmojiClick={onEmojiClick} height={350} width={300} />
