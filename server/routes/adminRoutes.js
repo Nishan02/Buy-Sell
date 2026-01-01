@@ -7,7 +7,9 @@ import {
     deleteUser, 
     banUser,        // <--- Added banUser
     getAllItems, 
-    deleteItemAdmin 
+    deleteItemAdmin, 
+    getReportedItems,
+    dismissReport
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -23,5 +25,11 @@ router.put('/users/:id/ban', protect, admin, banUser); // <--- Ban Route
 // --- Item Management ---
 router.get('/items', protect, admin, getAllItems);
 router.delete('/items/:id', protect, admin, deleteItemAdmin);
+
+// Add Reports Route
+router.get('/reports', protect, admin, getReportedItems);
+
+// Add Dismiss Route
+router.put('/items/:id/dismiss-report', protect, admin, dismissReport);
 
 export default router;

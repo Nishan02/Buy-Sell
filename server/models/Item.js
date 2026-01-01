@@ -17,7 +17,21 @@ const itemSchema = new mongoose.Schema({
         required: true 
     }, // Links the item to the person who posted it
     isSold: { type: Boolean, default: false },
-    contactNumber: { type: String, required: true }
+    contactNumber: { type: String, required: true },
+
+    isReported: {
+    type: Boolean,
+    default: false,
+  },
+  reportReason: {
+    type: String,
+    default: "", // Stores the reason why it was reported
+  },
+
+  reportCount: {
+    type: Number,
+    default: 0, 
+  },
 }, { timestamps: true });
 
 itemSchema.index({ title: 'text', description: 'text' });

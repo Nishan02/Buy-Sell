@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Item from '../models/Item.js';
+import asyncHandler from 'express-async-handler';
 
 // @desc    Get dashboard stats (Users, Items, Sold Items)
 // @route   GET /api/admin/stats
@@ -122,3 +123,25 @@ export const deleteItemAdmin = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const getReportedItems = asyncHandler(async (req, res) => {
+    const items = await Item.find({ isReported: true })
+                            .populate('seller', 'name email')
+                            // 👇 SORT BY COUNT (Descending: Highest first)
+                            .sort({ reportCount: -1, updatedAt: -1 });
+    res.json(items);
+});
+
+export const dismissReport = asyncHandler(async (req, res) => {
+    const item = await Item.findById(req.params.id);
+
+    if (item) {
+        item.isReported = false;
+        item.reportReason = ""; // Clear the reason
+        await item.save();
+        res.json({ message: 'Report dismissed' });
+    } else {
+        res.status(404);
+        throw new Error('Item not found');
+    }
+});

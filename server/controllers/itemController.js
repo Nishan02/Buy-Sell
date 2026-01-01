@@ -1,5 +1,5 @@
 import Item from '../models/Item.js';
-
+import asyncHandler from 'express-async-handler';
 
 
 export const createItem = async (req, res) => {
@@ -226,3 +226,38 @@ export const getItemsByUser = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+
+export const reportItem = asyncHandler(async (req, res) => {
+  const { reason } = req.body;
+  const item = await Item.findById(req.params.id);
+
+  if (item) {
+    // Check if the user is trying to report their own item
+    if (item.seller.toString() === req.user._id.toString()) {
+      res.status(400);
+      throw new Error("You cannot report your own item.");
+    }
+
+    // Set the reported flag and save the reason
+    // We update the item with the report details
+    item.isReported = true;
+    item.reportReason = reason;
+    
+    // Optional: You could track WHO reported it by pushing to an array if you wanted to be fancy
+    // item.reportedBy.push(req.user._id); 
+
+    item.reportCount = (item.reportCount || 0) + 1;
+
+    const updatedItem = await item.save();
+
+    res.status(200).json({
+      message: 'Item reported successfully',
+      isReported: updatedItem.isReported
+    });
+  } else {
+    res.status(404);
+    throw new Error('Item not found');
+  }
+});
+
+
