@@ -26,16 +26,33 @@ const EditItem = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+useEffect(() => {
     const fetchItem = async () => {
       try {
         const token = localStorage.getItem('token');
+        const currentUser = JSON.parse(localStorage.getItem('user')); // 1. Get Logged In User
+
         const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/items/${id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
 
         if (!response.ok) throw new Error(data.message || 'Failed to fetch item');
+
+        // --- SECURITY FIX START ---
+        // 2. Identify the item's owner ID
+        const itemSellerId = data.seller?._id || data.seller;
+        const currentUserId = currentUser?._id || currentUser?.id;
+
+        // 3. Compare IDs
+        if (String(itemSellerId) !== String(currentUserId)) {
+            toast.error("Unauthorized! You cannot edit items that don't belong to you.", {
+                toastId: 'unauthorized-error' // <--- This prevents duplicates
+            });
+            navigate('/my-listings'); // Kick them out immediately
+            return; // Stop the function here so the form never populates
+        }
+        // --- SECURITY FIX END ---
 
         const standardCategories = ['Books & Notes', 'Electronics', 'Hostel Essentials', 'Cycles', 'Stationery'];
         const isOther = !standardCategories.includes(data.category);
@@ -64,7 +81,7 @@ const EditItem = () => {
     };
 
     fetchItem();
-  }, [id]);
+  }, [id, navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
