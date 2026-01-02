@@ -100,23 +100,22 @@ const Home = () => {
     fetchWishlist();
   }, []);
 
-  // --- 3. AUTO-SCROLL LOGIC (FIXED WITH DELAY) ---
+  // --- 3. AUTO-SCROLL LOGIC ---
   useEffect(() => {
     if (searchQuery && !loading) {
-      // We wait 100ms to let the browser finish "resetting" the scroll to top
       const timer = setTimeout(() => {
         const itemsSection = document.getElementById('items');
         if (itemsSection) {
           const elementPosition = itemsSection.getBoundingClientRect().top + window.scrollY;
-          // Offset of 240px handles the Sticky Navbar + Filter Bar height
-          const offsetPosition = elementPosition - 240; 
+          // Offset needs to be larger on mobile now to account for tall header
+          const offsetPosition = elementPosition - 280; 
 
           window.scrollTo({
             top: offsetPosition,
             behavior: 'smooth'
           });
         }
-      }, 100); // 100ms delay ensures reliability
+      }, 100); 
 
       return () => clearTimeout(timer);
     }
@@ -130,19 +129,22 @@ const Home = () => {
         <HeroSection />
 
         {/* --- FILTER & SORT SECTION --- */}
-        <section className="bg-white dark:bg-gray-800 py-4 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-20 z-40">
+        {/* FIX: sticky top-[150px] for mobile (tall navbar), md:top-20 for desktop (short navbar) */}
+        <section className="bg-white dark:bg-gray-800 py-3 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-[150px] md:top-20 z-40 transition-all">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
+            
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
               
+              {/* Categories */}
               <div className="flex-1 overflow-hidden">
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Categories</h3>
-                <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Categories</h3>
+                <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-hide">
                   <button
                       onClick={() => setSelectedCategory('')}
-                      className={`inline-flex items-center px-5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                      className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap border ${
                         selectedCategory === '' 
-                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-transparent shadow-md' 
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600'
                       }`}
                     >
                       All
@@ -151,10 +153,10 @@ const Home = () => {
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat === selectedCategory ? '' : cat)}
-                      className={`inline-flex items-center px-5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                      className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap border ${
                         selectedCategory === cat 
-                        ? 'bg-indigo-600 text-white shadow-md' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        ? 'bg-indigo-600 text-white border-transparent shadow-md' 
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600'
                       }`}
                     >
                       {cat}
@@ -163,12 +165,13 @@ const Home = () => {
                 </div>
               </div>
 
+              {/* Sort By */}
               <div className="flex-shrink-0 lg:border-l lg:pl-8 dark:border-gray-700">
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sort By</h3>
-                <div className="flex flex-wrap gap-2">
+                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Sort By</h3>
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                   <button
                     onClick={() => setSortBy(sortBy === 'priceLow' ? '' : 'priceLow')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                    className={`px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium border transition-all whitespace-nowrap ${
                       sortBy === 'priceLow'
                       ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
                       : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300'
@@ -178,7 +181,7 @@ const Home = () => {
                   </button>
                   <button
                     onClick={() => setSortBy(sortBy === 'priceHigh' ? '' : 'priceHigh')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                    className={`px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium border transition-all whitespace-nowrap ${
                       sortBy === 'priceHigh'
                       ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
                       : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300'

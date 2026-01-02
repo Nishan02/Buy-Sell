@@ -136,6 +136,77 @@ const Navbar = () => {
     </Link>
   );
 
+  // Helper component for the dropdown content (to avoid duplication)
+  const SearchDropdown = () => (
+    <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-[100] overflow-hidden">
+        {searchTerm.trim().length > 0 && suggestions.length > 0 ? (
+            <div className="py-2">
+            {suggestions.map((item) => (
+                <button
+                key={item._id}
+                onMouseDown={() => {
+                    saveHistory(item.title);
+                    navigate(`/item/${item._id}`);
+                }}
+                className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-start transition border-b border-gray-100 dark:border-gray-700 last:border-none"
+                >
+                <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-gray-700 overflow-hidden flex-shrink-0 mr-3 border border-gray-200 dark:border-gray-600">
+                    {item.images && item.images[0] ? (
+                        <img src={item.images[0]} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                        <FaStore className="h-full w-full p-2 text-gray-300" />
+                    )}
+                </div>
+                <div>
+                    <p className="text-sm text-gray-800 dark:text-gray-200 font-medium line-clamp-1">{item.title}</p>
+                    {item.category && (
+                        <p className="text-xs text-indigo-500 dark:text-indigo-400">in {item.category}</p>
+                    )}
+                </div>
+                </button>
+            ))}
+            <button 
+                onMouseDown={handleFullSearch}
+                className="w-full text-center py-2.5 text-sm text-indigo-700 dark:text-indigo-400 font-bold hover:bg-indigo-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700 block bg-gray-50 dark:bg-gray-800"
+            >
+                See all results for "{searchTerm}"
+            </button>
+            </div>
+        ) : history.length > 0 && searchTerm.trim().length === 0 ? (
+            <div className="py-2">
+            <p className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Recent Searches</p>
+            {history.map((term, index) => (
+                <div key={index} className="flex items-center w-full hover:bg-gray-50 dark:hover:bg-gray-700 transition border-b border-gray-50 dark:border-gray-700 last:border-none group">
+                <button
+                    onMouseDown={() => {
+                    setSearchTerm(term);
+                    navigate(`/?search=${term}`);
+                    }}
+                    className="flex-grow text-left px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 flex items-center"
+                >
+                    <FaHistory className="mr-3 text-gray-300 text-xs group-hover:text-indigo-400 transition-colors" />
+                    {term}
+                </button>
+                <button 
+                    onMouseDown={(e) => handleDeleteHistoryItem(e, term)}
+                    className="px-4 py-2 text-gray-300 hover:text-red-500 transition-colors focus:outline-none"
+                    title="Remove from history"
+                >
+                    <FaTimes size={12} />
+                </button>
+                </div>
+            ))}
+            <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center mt-1">
+                <span className="text-xs text-gray-400 italic">History is saved locally</span>
+                <button onMouseDown={handleClearAllHistory} className="text-[10px] font-bold text-gray-500 hover:text-red-600 transition flex items-center uppercase tracking-wide">
+                <FaTrashAlt className="mr-1.5" /> Clear All
+                </button>
+            </div>
+            </div>
+        ) : null}
+    </div>
+  );
+
   return (
     <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50 transition-colors duration-200">
       <div className="w-full px-4 sm:px-6 lg:px-8 max-w-[95rem] mx-auto">
@@ -178,76 +249,8 @@ const Navbar = () => {
               </div>
             </form>
 
-            {/* --- DROPDOWN --- */}
-            {showDropdown && (
-              <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-[100] overflow-hidden">
-                {searchTerm.trim().length > 0 && suggestions.length > 0 ? (
-                  <div className="py-2">
-                    {suggestions.map((item) => (
-                      <button
-                        key={item._id}
-                        onMouseDown={() => {
-                          saveHistory(item.title);
-                          navigate(`/item/${item._id}`);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-start transition border-b border-gray-100 dark:border-gray-700 last:border-none"
-                      >
-                        <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-gray-700 overflow-hidden flex-shrink-0 mr-3 border border-gray-200 dark:border-gray-600">
-                             {item.images && item.images[0] ? (
-                                <img src={item.images[0]} alt="" className="h-full w-full object-cover" />
-                             ) : (
-                                <FaStore className="h-full w-full p-2 text-gray-300" />
-                             )}
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-800 dark:text-gray-200 font-medium line-clamp-1">{item.title}</p>
-                            {item.category && (
-                              <p className="text-xs text-indigo-500 dark:text-indigo-400">in {item.category}</p>
-                            )}
-                        </div>
-                      </button>
-                    ))}
-                    <button 
-                       onMouseDown={handleFullSearch}
-                       className="w-full text-center py-2.5 text-sm text-indigo-700 dark:text-indigo-400 font-bold hover:bg-indigo-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700 block bg-gray-50 dark:bg-gray-800"
-                    >
-                        See all results for "{searchTerm}"
-                    </button>
-                  </div>
-                ) : history.length > 0 && searchTerm.trim().length === 0 ? (
-                  <div className="py-2">
-                    <p className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Recent Searches</p>
-                    {history.map((term, index) => (
-                      <div key={index} className="flex items-center w-full hover:bg-gray-50 dark:hover:bg-gray-700 transition border-b border-gray-50 dark:border-gray-700 last:border-none group">
-                        <button
-                          onMouseDown={() => {
-                            setSearchTerm(term);
-                            navigate(`/?search=${term}`);
-                          }}
-                          className="flex-grow text-left px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 flex items-center"
-                        >
-                          <FaHistory className="mr-3 text-gray-300 text-xs group-hover:text-indigo-400 transition-colors" />
-                          {term}
-                        </button>
-                        <button 
-                          onMouseDown={(e) => handleDeleteHistoryItem(e, term)}
-                          className="px-4 py-2 text-gray-300 hover:text-red-500 transition-colors focus:outline-none"
-                          title="Remove from history"
-                        >
-                          <FaTimes size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center mt-1">
-                        <span className="text-xs text-gray-400 italic">History is saved locally</span>
-                        <button onMouseDown={handleClearAllHistory} className="text-[10px] font-bold text-gray-500 hover:text-red-600 transition flex items-center uppercase tracking-wide">
-                        <FaTrashAlt className="mr-1.5" /> Clear All
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
+            {/* --- DROPDOWN (Desktop) --- */}
+            {showDropdown && <SearchDropdown />}
           </div>
 
           {/* 3. RIGHT: Actions */}
@@ -259,7 +262,7 @@ const Navbar = () => {
 
             <NavItem to="/lost-and-found" icon={FaBullhorn} label="Lost & Found" />
             
-            {/* --- ADMIN BUTTON (Desktop: Visible md and up) --- */}
+            {/* --- ADMIN BUTTON (Desktop) --- */}
             {user && user.isAdmin && (
                <Link
                  to="/admin"
@@ -312,7 +315,6 @@ const Navbar = () => {
                     <div className="py-2">
                       <Link to="/profile" className="group flex items-center px-6 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"><FaUser className="mr-3 text-gray-400 group-hover:text-indigo-500" /> Your Profile</Link>
                       
-                      {/* --- ADMIN BUTTON (Dropdown: Visible ONLY on mobile via md:hidden) --- */}
                       {user && user.isAdmin && (
                         <Link to="/admin" className="md:hidden group flex items-center px-6 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 font-bold bg-red-50/50 dark:bg-red-900/5">
                             <FaUserShield className="mr-3 text-red-500" /> Admin Panel
@@ -335,7 +337,6 @@ const Navbar = () => {
                       <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                       
                       <div className="lg:hidden">
-                          {/* Mobile Menu: Add Sell Item back here for easy access */}
                           <Link to="/sell" className="group flex items-center px-6 py-3 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"><FaPlus className="mr-3 text-gray-400 group-hover:text-indigo-500" /> Sell Item</Link>
                           <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                       </div>
@@ -346,7 +347,6 @@ const Navbar = () => {
                 )}
               </div>
             ) : (
-              // Improved Mobile Layout for Logged Out State
               <div className="flex items-center gap-2">
                 <Link to="/login" className="text-gray-600 dark:text-gray-300 font-bold hover:text-indigo-600 px-3 py-2 text-xs sm:text-sm whitespace-nowrap">Log in</Link>
                 <Link to="/signup" className="bg-indigo-600 text-white px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold hover:bg-indigo-700 shadow-lg whitespace-nowrap">Sign up</Link>
@@ -363,18 +363,23 @@ const Navbar = () => {
         </div>
       </div>
       
-      {/* Mobile Search Bar */}
-      <div className="md:hidden px-4 pb-4 border-t border-gray-100 dark:border-gray-800 pt-3">
+      {/* --- MOBILE SEARCH BAR (Visible md:hidden) --- */}
+      <div className="md:hidden px-4 pb-4 border-t border-gray-100 dark:border-gray-800 pt-3 relative">
         <form onSubmit={handleFullSearch} className="relative">
           <FaSearch className="absolute left-3 top-3.5 text-gray-400" />
           <input
             type="text"
             value={searchTerm}
+            // Added handlers here for mobile too
+            onFocus={handleFocus}
+            onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none"
             placeholder="Search..."
           />
         </form>
+        {/* Added Dropdown for Mobile */}
+        {showDropdown && <SearchDropdown />}
       </div>
     </nav>
   );
