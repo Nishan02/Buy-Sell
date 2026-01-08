@@ -6,6 +6,25 @@ import ItemCard from '../components/ItemCard';
 import API from '../api/axios.js';
 import { toast } from "react-toastify";
 
+// --- SKELETON COMPONENT ---
+const SkeletonItemCard = () => (
+  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-full animate-pulse">
+    <div className="aspect-[4/3] bg-gray-200 dark:bg-gray-700 w-full"></div>
+    <div className="p-4 flex flex-col flex-1 gap-3">
+      <div className="flex justify-between">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+      </div>
+      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mt-auto"></div>
+      <div className="flex items-center gap-2 mt-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+        <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+      </div>
+    </div>
+  </div>
+);
+
 const Home = () => {
   const [items, setItems] = useState([]);
   const [wishlist, setWishlist] = useState([]); 
@@ -38,7 +57,8 @@ const Home = () => {
     } catch (error) {
       console.error("Error fetching items:", error);
     } finally {
-      setLoading(false);
+      // Small delay to prevent flickering if api is too fast (optional)
+      setTimeout(() => setLoading(false), 300);
     }
   };
 
@@ -77,7 +97,6 @@ const Home = () => {
     }
   };
 
-  // --- 1. SCROLL LISTENER (Infinite Scroll) ---
   useEffect(() => {
     const handleScroll = () => {
       if (
@@ -100,14 +119,12 @@ const Home = () => {
     fetchWishlist();
   }, []);
 
-  // --- 3. AUTO-SCROLL LOGIC ---
   useEffect(() => {
     if (searchQuery && !loading) {
       const timer = setTimeout(() => {
         const itemsSection = document.getElementById('items');
         if (itemsSection) {
           const elementPosition = itemsSection.getBoundingClientRect().top + window.scrollY;
-          // Offset needs to be larger on mobile now to account for tall header
           const offsetPosition = elementPosition - 280; 
 
           window.scrollTo({
@@ -128,11 +145,8 @@ const Home = () => {
       <main className="flex-grow">
         <HeroSection />
 
-        {/* --- FILTER & SORT SECTION --- */}
-        {/* FIX: sticky top-[150px] for mobile (tall navbar), md:top-20 for desktop (short navbar) */}
         <section className="bg-white dark:bg-gray-800 py-3 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-[150px] md:top-20 z-40 transition-all">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
               
               {/* Categories */}
@@ -208,22 +222,25 @@ const Home = () => {
               </span>
             </div>
 
+            {/* --- REPLACED SPINNER WITH SKELETON GRID --- */}
             {loading ? (
-              <div className="flex justify-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+              <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
+                {/* Render 8 Skeleton Cards while loading */}
+                {[...Array(8)].map((_, index) => (
+                  <SkeletonItemCard key={index} />
+                ))}
               </div>
             ) : items.length > 0 ? (
               <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-                {/* ✅ CORRECT CODE */}
-            {items.slice(0, visibleCount).map((item) => (
-              <ItemCard 
-                key={item._id} 
-                item={item} 
-                isWishlisted={wishlist.includes(item._id)}
-                onToggleWishlist={(e) => handleToggleWishlist(e, item._id)}
-              />
-            ))}
-            
+                {items.slice(0, visibleCount).map((item) => (
+                  <Link to={`/item/${item._id}`} key={item._id}>
+                    <ItemCard 
+                      item={item} 
+                      isWishlisted={wishlist.includes(item._id)}
+                      onToggleWishlist={(e) => handleToggleWishlist(e, item._id)}
+                    />
+                  </Link>
+                ))}
               </div>
             ) : (
               <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
@@ -232,7 +249,7 @@ const Home = () => {
               </div>
             )}
             
-            {items.length > visibleCount && (
+            {!loading && items.length > visibleCount && (
                <div className="py-8 text-center text-gray-400 text-sm italic">
                  Scroll for more...
                </div>

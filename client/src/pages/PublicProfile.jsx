@@ -8,6 +8,78 @@ import {
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
+// --- SKELETON COMPONENT ---
+const PublicProfileSkeleton = () => {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200 font-sans">
+      <Navbar />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-pulse">
+        
+        {/* Profile Header Skeleton */}
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700 relative">
+          {/* Cover Photo */}
+          <div className="h-48 sm:h-64 bg-gray-200 dark:bg-gray-700"></div>
+          
+          <div className="px-6 pb-8">
+            <div className="relative flex justify-between items-end -mt-16 mb-6">
+              {/* Profile Pic */}
+              <div className="bg-white dark:bg-gray-800 p-1.5 rounded-full z-10">
+                <div className="h-32 w-32 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white dark:border-gray-800"></div>
+              </div>
+            </div>
+
+            <div>
+              {/* Name Skeleton */}
+              <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+              
+              {/* Details Pills Skeleton */}
+              <div className="flex flex-wrap gap-3 mt-4">
+                <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                <div className="h-8 w-40 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Listings Header Skeleton */}
+        <div className="mt-12 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+             <div className="h-12 w-12 rounded-xl bg-gray-200 dark:bg-gray-700"></div>
+             <div className="space-y-2">
+               <div className="h-6 w-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
+               <div className="h-4 w-60 bg-gray-200 dark:bg-gray-700 rounded"></div>
+             </div>
+          </div>
+          <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+        </div>
+
+        {/* Items Grid Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-full">
+              <div className="h-48 bg-gray-200 dark:bg-gray-700 w-full"></div>
+              <div className="p-4 flex-1 flex flex-col gap-3">
+                <div className="flex justify-between">
+                  <div className="h-5 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-5 w-1/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div className="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between">
+                   <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                   <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
 const PublicProfile = () => {
   const { userId } = useParams();
   const [profile, setProfile] = useState(null);
@@ -28,22 +100,17 @@ const PublicProfile = () => {
         console.error("Error fetching profile:", err);
         toast.error("Could not load user profile.");
       } finally {
-        setLoading(false);
+        // Optional: Small timeout to prevent flicker on fast loads
+        setTimeout(() => setLoading(false), 300);
       }
     };
 
     if (userId) fetchProfileData();
   }, [userId]);
 
+  // --- REPLACED SPINNER WITH SKELETON COMPONENT ---
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors duration-200">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        </div>
-      </div>
-    );
+    return <PublicProfileSkeleton />;
   }
 
   if (!profile) {
@@ -103,7 +170,7 @@ const PublicProfile = () => {
               <div className="flex flex-wrap gap-3 text-sm font-medium mt-4">
                 
                 {/* Branch (Year/Department) */}
-                {profile.year && ( // Assuming 'year' in DB stores Branch info based on your UserProfile logic
+                {profile.year && ( 
                   <div className="flex items-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600">
                     <FaUniversity className="mr-2 text-indigo-500" /> 
                     {profile.year}
@@ -111,7 +178,7 @@ const PublicProfile = () => {
                 )}
 
                 {/* Mobile Number */}
-                {profile.phone && ( // Assuming 'phone' in DB stores mobile number
+                {profile.phone && ( 
                   <div className="flex items-center bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-800">
                     <FaPhone className="mr-2" /> 
                     {profile.phone}
