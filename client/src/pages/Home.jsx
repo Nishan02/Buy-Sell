@@ -214,15 +214,16 @@ const Home = () => {
               </div>
             ) : items.length > 0 ? (
               <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-                {items.slice(0, visibleCount).map((item) => (
-                  <Link to={`/item/${item._id}`} key={item._id}>
-                    <ItemCard 
-                      item={item} 
-                      isWishlisted={wishlist.includes(item._id)}
-                      onToggleWishlist={(e) => handleToggleWishlist(e, item._id)}
-                    />
-                  </Link>
-                ))}
+                {/* ✅ CORRECT CODE */}
+            {items.slice(0, visibleCount).map((item) => (
+              <ItemCard 
+                key={item._id} 
+                item={item} 
+                isWishlisted={wishlist.includes(item._id)}
+                onToggleWishlist={(e) => handleToggleWishlist(e, item._id)}
+              />
+            ))}
+            
               </div>
             ) : (
               <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">

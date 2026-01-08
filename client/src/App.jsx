@@ -59,8 +59,6 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/signup" element={<Auth />} />
-          <Route path="/lost-and-found" element={<LostAndFound />} />
-          <Route path="/item/:id" element={<ItemDetails />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/passwordreset/:resetToken" element={<ResetPassword />} />
           <Route path="/profile/view/:userId" element={<PublicProfile />} />
@@ -155,7 +153,29 @@ function App() {
               </h1>
             }
           />
+
+          <Route 
+            path="/lost-and-found" 
+            element={
+              <ProtectedRoute>
+                <LostAndFound />
+              </ProtectedRoute>
+            } 
+          />
+
+          <Route
+           path="/item/:id"
+            element={<ProtectedRoute>
+              <ItemDetails />
+            </ProtectedRoute>}
+           />
+
+
+
         </Routes>
+
+          
+
       </div>
 
       {/* Conditionally Render Footer */}
