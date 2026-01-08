@@ -118,12 +118,12 @@ const Auth = () => {
 
   return (
     // FIX 1: Main Background
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col sm:justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200">
       
       <div className="absolute top-6 left-6">
          <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600 dark:text-indigo-400">
            <FaStore className="h-8 w-8 mr-2" />
-           <span className="text-gray-800 dark:text-white">Campus<span className="text-indigo-600 dark:text-indigo-400">Mart</span></span>
+           <span className="text-gray-800 dark:text-white">kampus<span className="text-indigo-600 dark:text-indigo-400">Cart</span></span>
          </Link>
       </div>
 
