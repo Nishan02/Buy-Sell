@@ -243,7 +243,7 @@ const Auth = () => {
         <div className="absolute top-6 left-6">
             <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600 dark:text-indigo-400">
             <FaStore className="h-8 w-8 mr-2" />
-            <span className="text-gray-800 dark:text-white">Campus<span className="text-indigo-600 dark:text-indigo-400">Mart</span></span>
+            <span className="text-gray-800 dark:text-white">kampus<span className="text-indigo-600 dark:text-indigo-400">Cart</span></span>
             </Link>
         </div>
 
