@@ -26,6 +26,7 @@ import Contact from "./pages/Contact";
 import Terms from "./pages/Terms";
 import PublicProfile from "./pages/PublicProfile";
 import AdminDashboard from "./pages/AdminDashboard"; // <--- 1. Import Admin Page
+import NotFound from "./pages/NotFound";
 
 function App() {
   const location = useLocation();
@@ -148,9 +149,7 @@ function App() {
           <Route
             path="*"
             element={
-              <h1 className="text-center mt-20 text-2xl font-bold text-gray-600">
-                404 Not Found
-              </h1>
+              <NotFound />
             }
           />
 
