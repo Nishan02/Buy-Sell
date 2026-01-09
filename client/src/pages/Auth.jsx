@@ -1,11 +1,108 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaStore } from "react-icons/fa";
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
+// --- IMPORTS FOR PARTICLES ---
+import Particles, { initParticlesEngine } from "@tsparticles/react";
+import { loadSlim } from "@tsparticles/slim"; 
+
+// --- IMPORT THEME CONTEXT ---
+import { useTheme } from '../context/ThemeContext'; 
+
 const Auth = () => {
   const navigate = useNavigate();
+  const [init, setInit] = useState(false);
+  const { theme } = useTheme(); // Get the current theme
+
+  // 1. INITIALIZE ENGINE
+  useEffect(() => {
+    initParticlesEngine(async (engine) => {
+      await loadSlim(engine);
+    }).then(() => {
+      setInit(true);
+    });
+  }, []);
+
+  // 2. DYNAMIC GALAXY CONFIGURATION
+  // useMemo ensures this updates immediately when 'theme' changes
+  const galaxyConfig = useMemo(() => ({
+    fullScreen: {
+      enable: true,
+      zIndex: 0, // Behind everything
+    },
+    particles: {
+      number: {
+        value: 160, 
+        density: {
+          enable: true,
+          area: 800,
+        },
+      },
+      color: {
+        // Dark Mode: White Stars | Light Mode: Dark Indigo Stars
+        value: theme === 'dark' ? "#ffffff" : "#000000ff",
+      },
+      shape: {
+        type: "circle", 
+      },
+      opacity: {
+        value: { min: 0.1, max: 1 }, 
+        animation: {
+          enable: true,
+          speed: 1, 
+          sync: false,
+        },
+      },
+      size: {
+        value: { min: 0.1, max: 2 }, 
+      },
+      move: {
+        enable: true,
+        speed: 0.4, 
+        direction: "none",
+        random: true,
+        straight: false,
+        outModes: "out",
+      },
+      links: {
+        enable: true,
+        distance: 100,
+        // Dark Mode: White Links | Light Mode: Dark Indigo Links
+        color: theme === 'dark' ? "#ffffff" : "#0a0a0bff",
+        opacity: 0.1, 
+        width: 1,
+      },
+    },
+    interactivity: {
+      events: {
+        onHover: {
+          enable: true,
+          mode: "grab", 
+        },
+        onClick: {
+          enable: true,
+          mode: "push", 
+        },
+      },
+      modes: {
+        grab: {
+          distance: 140,
+          links: {
+            opacity: 0.5,
+          },
+        },
+        push: {
+          quantity: 4,
+        },
+      },
+    },
+    detectRetina: true,
+    background: {
+      color: "transparent", 
+    },
+  }), [theme]); // <--- Re-run this config when theme changes
 
   const [isLogin, setIsLogin] = useState(true);
   const [signupStep, setSignupStep] = useState(1);
@@ -117,17 +214,25 @@ const Auth = () => {
   };
 
   return (
-    // FIX 1: Main Background
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col sm:justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200">
-      
-      <div className="absolute top-6 left-6">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col justify-start sm:justify-center pt-20 sm:pt-0 sm:px-6 lg:px-8 transition-colors duration-200 relative overflow-hidden">      
+      {/* RENDER PARTICLES */}
+      {init && (
+        <Particles
+          id="tsparticles"
+          options={galaxyConfig}
+        />
+      )}
+
+      {/* Logo */}
+      <div className="absolute top-6 left-6 z-10">
          <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600 dark:text-indigo-400">
            <FaStore className="h-8 w-8 mr-2" />
            <span className="text-gray-800 dark:text-white">kampus<span className="text-indigo-600 dark:text-indigo-400">Cart</span></span>
          </Link>
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+      {/* Header */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
           {isLogin ? 'Sign in to your account' : 'Create your account'}
         </h2>
@@ -136,8 +241,8 @@ const Auth = () => {
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        {/* FIX 2: Card Background & Border */}
+      {/* Form Card */}
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-transparent dark:border-gray-700 transition-colors">
 
           <form className="space-y-6" onSubmit={handleSubmit}>
@@ -148,7 +253,6 @@ const Auth = () => {
               </div>
             )}
 
-            {/* --- SIGNUP ONLY: Full Name --- */}
             {!isLogin && signupStep === 1 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
@@ -166,7 +270,6 @@ const Auth = () => {
               </div>
             )}
 
-            {/* --- BOTH: Email Address --- */}
             {signupStep === 1 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -186,7 +289,6 @@ const Auth = () => {
               </div>
             )}
 
-            {/* --- BOTH: Password --- */}
             {(isLogin || signupStep === 1) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -222,7 +324,6 @@ const Auth = () => {
               </div>
             )}
 
-            {/* --- SIGNUP ONLY: Confirm Password --- */}
             {!isLogin && signupStep === 1 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
@@ -239,7 +340,6 @@ const Auth = () => {
               </div>
             )}
 
-            {/* --- SIGNUP OTP STEP --- */}
             {!isLogin && signupStep === 2 && (
               <div className="text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -292,7 +392,6 @@ const Auth = () => {
               </div>
             )}
 
-            {/* --- SUBMIT BUTTON --- */}
             <div>
               <button
                 type="submit"
@@ -316,7 +415,6 @@ const Auth = () => {
 
           </form>
 
-          {/* --- TOGGLE LOGIN / SIGNUP --- */}
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
