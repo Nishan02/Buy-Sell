@@ -209,7 +209,18 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gray-100 dark:bg-gray-900 flex flex-col justify-start sm:justify-center pt-20 sm:pt-0 sm:px-6 lg:px-8 transition-colors duration-200 relative">      {/* RENDER PARTICLES */}
+    // FIX 2: Main Layout
+    // - min-h-screen: Ensures full height
+    // - flex flex-col: Standard layout
+    // - overflow-x-hidden: Prevents horizontal scroll
+    // - NOTE: We removed 'justify-center' from here!
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-200 relative overflow-x-hidden">
+      
+      {/* FIX 3: Particles Layer 
+          - fixed inset-0: Keeps background stuck to screen, doesn't scroll with content
+          - z-0: Keeps it behind everything
+          - pointer-events-none: Ensures clicks pass through to the form if needed (though canvas usually handles this)
+      */}
       {init && (
         <div className="fixed inset-0 z-0">
             <Particles
@@ -220,13 +231,21 @@ const Auth = () => {
         </div>
       )}
 
-      {/* Logo */}
-      <div className="absolute top-6 left-6 z-10">
-         <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-           <FaStore className="h-8 w-8 mr-2" />
-           <span className="text-gray-800 dark:text-white">kampus<span className="text-indigo-600 dark:text-indigo-400">Cart</span></span>
-         </Link>
-      </div>
+      {/* FIX 4: Content Wrapper
+          - absolute top-0 w-full: Overlays on top of the fixed particles
+          - flex flex-col: Layout direction
+          - pt-24 (Mobile): Adds top padding so form starts ~100px down. Stable. No Jumping.
+          - md:justify-center md:pt-0 (Desktop): Re-enables centering on big screens where keyboards don't overlap.
+      */}
+      <div className="relative z-10 flex flex-col min-h-screen pt-24 pb-12 sm:px-6 lg:px-8 md:justify-center md:pt-0">
+        
+        {/* Logo */}
+        <div className="absolute top-6 left-6">
+            <Link to="/" className="flex items-center text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+            <FaStore className="h-8 w-8 mr-2" />
+            <span className="text-gray-800 dark:text-white">Campus<span className="text-indigo-600 dark:text-indigo-400">Mart</span></span>
+            </Link>
+        </div>
 
         {/* Header */}
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
