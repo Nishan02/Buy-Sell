@@ -24,8 +24,10 @@ const Navbar = () => {
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
+
+  // ✅ FIX 1: Rely on 'user' object, not 'token' string
   const user = JSON.parse(localStorage.getItem('user')) || JSON.parse(localStorage.getItem('userInfo'));
+  const isLoggedIn = !!user; // Boolean flag for UI
 
   // --- 1. NOTIFICATION LOGIC ---
   useEffect(() => {
@@ -74,12 +76,22 @@ const Navbar = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userInfo');
-    toast.success('Logged out successfully!');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await API.get('/auth/logout'); 
+
+      localStorage.removeItem('token'); 
+      localStorage.removeItem('user');
+      localStorage.removeItem('userInfo');
+      
+      toast.success('Logged out successfully!');
+      navigate('/login');
+      
+    } catch (error) {
+      console.error("Logout failed", error);
+      localStorage.removeItem('user');
+      navigate('/login');
+    }
   };
 
   const handleFullSearch = (e) => {
@@ -136,7 +148,6 @@ const Navbar = () => {
     </Link>
   );
 
-  // Helper component for the dropdown content (to avoid duplication)
   const SearchDropdown = () => (
     <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-[100] overflow-hidden">
         {searchTerm.trim().length > 0 && suggestions.length > 0 ? (
@@ -256,7 +267,8 @@ const Navbar = () => {
           {/* 3. RIGHT: Actions */}
           <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
             
-            <div className={token ? "flex" : "hidden sm:flex"}>
+            {/* ✅ FIX 2: Use isLoggedIn boolean */}
+            <div className={isLoggedIn ? "flex" : "hidden sm:flex"}>
                 <NavItem to="/wishlist" icon={FaHeart} label="Wishlist" />
             </div>
 
@@ -282,14 +294,15 @@ const Navbar = () => {
                 Sell Item
             </Link>
 
-            {/* Only show Chats if User is Logged In */}
-            {token && (
+            {/* ✅ FIX 3: Use isLoggedIn boolean */}
+            {isLoggedIn && (
                 <NavItem to="/chats" icon={FaCommentDots} label="Chats" badgeCount={unreadChatCount} />
             )}
 
             <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-2 hidden lg:block"></div>
             
-            {token ? (
+            {/* ✅ FIX 4: Use isLoggedIn boolean */}
+            {isLoggedIn ? (
               <div className="relative">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -355,7 +368,7 @@ const Navbar = () => {
                   onClick={toggleTheme}
                   className="ml-1 sm:ml-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-yellow-400 transition-colors"
                 >
-                    {theme === 'dark' ? <FaSun className="text-sm sm:text-base" /> : <FaMoon className="text-sm sm:text-base" />}
+                  {theme === 'dark' ? <FaSun className="text-sm sm:text-base" /> : <FaMoon className="text-sm sm:text-base" />}
                 </button>
               </div>
             )}

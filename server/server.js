@@ -3,6 +3,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser'; // 1. IMPORT THIS
 import { createServer } from 'http'; 
 import { Server } from 'socket.io';  
 import connectDB from './config/db.js';
@@ -22,11 +23,11 @@ connectDB();
 
 const app = express();
 
-//const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
-// You likely already have this
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
-  "http://localhost:5173",                     // Localhost
-  "http://localhost:5174",                     // Localhost (alternative)
+  "http://localhost:5173",
+  "http://localhost:5174",
   "https://www.kampuscart.site",   
   "https://buy-sell-murex.vercel.app",
   "https://kampuscart.onrender.com"
@@ -34,12 +35,12 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: allowedOrigins,
-  credentials: true // Keep this if you use cookies/sessions
+  credentials: true // Crucial for cookies to work
 }));
+
 app.use(express.json());
+app.use(cookieParser()); // 2. USE THIS (Must be before routes)
 app.use('/uploads', express.static('uploads')); 
-
-
 
 // Register Routes
 app.use('/api/auth', authRoutes);
@@ -59,7 +60,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-
 app.get('/', (req, res) => {
     res.send('API is running...');
 });
@@ -78,19 +78,15 @@ const io = new Server(httpServer, {
 const onlineUsers = new Map(); 
 
 io.on('connection', (socket) => {
-    console.log('🔗 New Socket Connection:', socket.id);
-
+   
     // A. User Setup
     socket.on('setup', (userData) => {
-        // Handle cases where frontend sends object {_id: "..."} or just "..."
         const userId = userData._id || userData.id || userData;
-        
         if (!userId) return console.log("⚠️ Setup failed: No User ID provided");
         
         socket.join(userId);
         onlineUsers.set(userId, socket.id);
-        
-        console.log(`✅ User Setup Complete: ${userId}`);
+    
         socket.emit('connected');
         io.emit('online_users', Array.from(onlineUsers.keys()));
     });
@@ -113,7 +109,6 @@ io.on('connection', (socket) => {
 
             if (String(userId) === String(senderId)) return;
             
-            // console.log(`📡 Sending message to: ${userId}`);
             socket.in(userId).emit('message received', newMessageReceived);
         });
     });

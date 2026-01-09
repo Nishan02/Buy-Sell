@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
-import API from '../api/axios';
+import API from '../api/axios'; // ✅ IMPORT AXIOS INSTANCE
 import Navbar from '../components/Navbar';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -26,8 +26,6 @@ const ItemDetailsSkeleton = () => (
 
       {/* RIGHT: Info Skeleton */}
       <div className="mt-10 px-4 sm:px-0 lg:mt-0">
-        
-        {/* Title & Badge */}
         <div className="flex justify-between items-start">
           <div className="flex-1 pr-4">
             <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-3/4 mb-3"></div>
@@ -35,23 +33,15 @@ const ItemDetailsSkeleton = () => (
           </div>
           <div className="h-6 w-20 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
         </div>
-
-        {/* Price */}
         <div className="mt-6 h-10 w-1/3 bg-gray-200 dark:bg-gray-800 rounded"></div>
-
-        {/* Description Box */}
         <div className="mt-8">
           <div className="h-4 w-24 bg-gray-200 dark:bg-gray-800 rounded mb-3"></div>
           <div className="h-32 w-full bg-gray-200 dark:bg-gray-800 rounded-2xl"></div>
         </div>
-
-        {/* Location Box */}
         <div className="mt-8">
           <div className="h-4 w-24 bg-gray-200 dark:bg-gray-800 rounded mb-3"></div>
           <div className="h-14 w-full bg-gray-200 dark:bg-gray-800 rounded-2xl"></div>
         </div>
-
-        {/* Seller Card */}
         <div className="mt-10 border-t dark:border-gray-700 pt-8">
           <div className="h-4 w-20 bg-gray-200 dark:bg-gray-800 rounded mb-4"></div>
           <div className="flex items-center p-4 bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700">
@@ -62,14 +52,11 @@ const ItemDetailsSkeleton = () => (
             </div>
           </div>
         </div>
-
-        {/* Buttons */}
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2 h-14 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
           <div className="h-14 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
           <div className="h-14 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
         </div>
-
       </div>
     </div>
   </div>
@@ -100,7 +87,6 @@ const ItemDetails = () => {
         console.error(err);
         toast.error("Failed to load item details.");
       } finally {
-        // Optional: Small timeout to prevent flicker on fast connections
         setTimeout(() => setLoading(false), 300);
       }
     };
@@ -108,13 +94,15 @@ const ItemDetails = () => {
   }, [id]);
 
   const handleChat = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    // ✅ FIX 1: Check user object instead of token
+    const user = JSON.parse(localStorage.getItem('user'));
+    
+    if (!user) {
         toast.error("Please login to chat!", { position: "top-right" });
         navigate('/login');
         return;
     }
-    const user = JSON.parse(localStorage.getItem('user'));
+    
     const currentUserId = user._id || user.id;
     const sellerId = item.seller?._id || item.seller;
 
@@ -124,6 +112,7 @@ const ItemDetails = () => {
     }
 
     try {
+        // ✅ FIX 2: Use API instance (Cookie sent automatically)
         const { data } = await API.post('/chat', { userId: sellerId });
         navigate('/chats', { state: { chat: data } }); 
     } catch (error) {
@@ -157,14 +146,16 @@ const ItemDetails = () => {
   const handleReportSubmit = async () => {
     if (!reportReason) return toast.warning("Please select a reason.");
     
-    const token = localStorage.getItem('token');
-    if (!token) {
+    // ✅ FIX 3: Check user object instead of token
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) {
         toast.error("Please login to report items.");
         return navigate('/login');
     }
 
     try {
         setIsReporting(true);
+        // ✅ FIX 4: Use API instance
         await API.post(`/items/${id}/report`, { reason: reportReason });
         toast.success("Item reported to Admin. Thank you for keeping our community safe!");
         setShowReportModal(false);
@@ -182,7 +173,6 @@ const ItemDetails = () => {
     return `https://wa.me/${cleanNumber}?text=${message}`;
   };
 
-  // 🔴 HELPER CONSTANTS FOR DISPLAY 🔴
   const displayName = item ? (item.sellerName || item.seller.name) : '';
   const displayEmail = item ? (item.sellerEmail || item.seller.email) : '';
 
@@ -190,11 +180,6 @@ const ItemDetails = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Navbar />
       <ToastContainer />
-      
-      {/* 1. LOADING STATE: Show Skeleton 
-          2. ERROR STATE: Show Not Found
-          3. SUCCESS STATE: Show Content
-      */}
       
       {loading ? (
         <ItemDetailsSkeleton />

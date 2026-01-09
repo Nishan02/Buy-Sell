@@ -2,41 +2,36 @@ import axios from 'axios';
 
 const API = axios.create({
     baseURL: `${import.meta.env.VITE_SERVER_URL}/api`,
+    withCredentials: true, // 👈 Critical for cookies
 });
 
-// 1. REQUEST Interceptor: Attaches Token to every request
-API.interceptors.request.use((req) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        req.headers.Authorization = `Bearer ${token}`;
-    }
-    return req;
-});
-
-// 2. RESPONSE Interceptor: Listens for "Banned" errors
+// 2. RESPONSE Interceptor
 API.interceptors.response.use(
-    (response) => response, // If success, just return data
+    (response) => response, 
     (error) => {
-        // Check if the error is a 403 Forbidden (which is what we set for bans)
+        // A. Handle Session Expiry (401 Unauthorized)
+        // If the backend says "No token" or "Invalid token", log us out.
+        if (error.response && error.response.status === 401) {
+            localStorage.removeItem('user');
+            localStorage.removeItem('userInfo');
+            
+            // Only redirect if we aren't already on the login page
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
+        }
+
+        // B. Handle Bans (403 Forbidden) - Your existing logic
         if (error.response && error.response.status === 403) {
             const errorMessage = error.response.data.message || "";
-
-            // Check if the message specifically mentions banning or suspension
             if (
                 errorMessage.toLowerCase().includes('banned') || 
                 errorMessage.toLowerCase().includes('suspended')
             ) {
-                // A. Kill the session
-                localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 localStorage.removeItem('userInfo');
                 localStorage.removeItem('searchHistory');
-
-                // B. Alert the user so they know why they were kicked out
-                // We use window.alert because it pauses execution until clicked
                 alert(`SESSION TERMINATED:\n\n${errorMessage}`);
-
-                // C. Force redirect to login
                 window.location.href = '/login';
             }
         }

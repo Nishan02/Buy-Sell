@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar'; 
 import { FaCloudUploadAlt, FaRupeeSign, FaMapMarkerAlt, FaTag, FaCamera, FaUser, FaPhone, FaEnvelope, FaTrash, FaSave, FaArrowLeft, FaTimesCircle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import API from '../api/axios'; // ✅ IMPORT AXIOS INSTANCE
 
 const EditItem = () => {
   const { id } = useParams();
@@ -26,33 +27,26 @@ const EditItem = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-useEffect(() => {
+  useEffect(() => {
     const fetchItem = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const currentUser = JSON.parse(localStorage.getItem('user')); // 1. Get Logged In User
+        const currentUser = JSON.parse(localStorage.getItem('user')); // Get User Info for ID check
 
-        const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/items/${id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
+        // ✅ FIX 1: Use API.get (Cookie handled automatically)
+        const { data } = await API.get(`/items/${id}`);
 
-        if (!response.ok) throw new Error(data.message || 'Failed to fetch item');
-
-        // --- SECURITY FIX START ---
-        // 2. Identify the item's owner ID
+        // --- SECURITY CHECK (Client Side) ---
         const itemSellerId = data.seller?._id || data.seller;
         const currentUserId = currentUser?._id || currentUser?.id;
 
-        // 3. Compare IDs
         if (String(itemSellerId) !== String(currentUserId)) {
             toast.error("Unauthorized! You cannot edit items that don't belong to you.", {
-                toastId: 'unauthorized-error' // <--- This prevents duplicates
+                toastId: 'unauthorized-error'
             });
-            navigate('/my-listings'); // Kick them out immediately
-            return; // Stop the function here so the form never populates
+            navigate('/my-listings'); 
+            return; 
         }
-        // --- SECURITY FIX END ---
+        // ------------------------------------
 
         const standardCategories = ['Books & Notes', 'Electronics', 'Hostel Essentials', 'Cycles', 'Stationery'];
         const isOther = !standardCategories.includes(data.category);
@@ -74,7 +68,8 @@ useEffect(() => {
         }
 
       } catch (err) {
-        setError(err.message);
+        console.error(err);
+        setError(err.response?.data?.message || 'Failed to fetch item');
       } finally {
         setLoading(false);
       }
@@ -142,21 +137,17 @@ useEffect(() => {
         data.append('images', file); 
       });
 
-      const token = localStorage.getItem('token'); 
-      const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/items/${id}`, {
-        method: 'PUT', 
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: data 
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Failed to update item');
+      // ✅ FIX 2: Use API.put
+      // - No token needed (Cookie sent automatically)
+      // - Axios handles 'Content-Type: multipart/form-data' automatically
+      await API.put(`/items/${id}`, data);
 
       toast.success('Item updated successfully!');
       navigate('/my-listings');
 
     } catch (err) {
-      setError(err.message);
+      console.error(err);
+      setError(err.response?.data?.message || 'Failed to update item');
     } finally {
       setSubmitting(false);
     }

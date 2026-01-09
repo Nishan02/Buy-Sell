@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaStore } from "react-icons/fa";
-import axios from 'axios';
+import API from '../api/axios'; // ✅ Using configured Axios instance
 import { toast } from 'react-toastify';
 
 // --- IMPORTS FOR PARTICLES ---
@@ -16,6 +16,7 @@ const Auth = () => {
   const [init, setInit] = useState(false);
   const { theme } = useTheme(); 
 
+  // --- PARTICLE INIT ---
   useEffect(() => {
     initParticlesEngine(async (engine) => {
       await loadSlim(engine);
@@ -24,93 +25,38 @@ const Auth = () => {
     });
   }, []);
 
+  // --- REDIRECT IF ALREADY LOGGED IN ---
+  useEffect(() => {
+    // ✅ FIX 1: Check for 'user' object, not 'token'
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user) {
+      navigate('/');
+    }
+  }, [navigate]);
+
   const galaxyConfig = useMemo(() => ({
-    // FIX 1: Disable built-in fullscreen so we can control layers manually with CSS
-    fullScreen: {
-      enable: false, 
-    },
+    fullScreen: { enable: false },
     particles: {
-      number: {
-        value: 160, 
-        density: {
-          enable: true,
-          area: 800,
-        },
-      },
-      color: {
-        value: theme === 'dark' ? "#ffffff" : "#4f46e5",
-      },
-      shape: {
-        type: "circle", 
-      },
-      opacity: {
-        value: { min: 0.1, max: 1 }, 
-        animation: {
-          enable: true,
-          speed: 1, 
-          sync: false,
-        },
-      },
-      size: {
-        value: { min: 0.1, max: 2 }, 
-      },
-      move: {
-        enable: true,
-        speed: 0.4, 
-        direction: "none",
-        random: true,
-        straight: false,
-        outModes: "out",
-      },
-      links: {
-        enable: true,
-        distance: 100,
-        color: theme === 'dark' ? "#ffffff" : "#4f46e5",
-        opacity: 0.1, 
-        width: 1,
-      },
+      number: { value: 160, density: { enable: true, area: 800 } },
+      color: { value: theme === 'dark' ? "#ffffff" : "#4f46e5" },
+      shape: { type: "circle" },
+      opacity: { value: { min: 0.1, max: 1 }, animation: { enable: true, speed: 1, sync: false } },
+      size: { value: { min: 0.1, max: 2 } },
+      move: { enable: true, speed: 0.4, direction: "none", random: true, straight: false, outModes: "out" },
+      links: { enable: true, distance: 100, color: theme === 'dark' ? "#ffffff" : "#4f46e5", opacity: 0.1, width: 1 },
     },
     interactivity: {
-      events: {
-        onHover: {
-          enable: true,
-          mode: "grab", 
-        },
-        onClick: {
-          enable: true,
-          mode: "push", 
-        },
-      },
-      modes: {
-        grab: {
-          distance: 140,
-          links: {
-            opacity: 0.5,
-          },
-        },
-        push: {
-          quantity: 4,
-        },
-      },
+      events: { onHover: { enable: true, mode: "grab" }, onClick: { enable: true, mode: "push" } },
+      modes: { grab: { distance: 140, links: { opacity: 0.5 } }, push: { quantity: 4 } },
     },
     detectRetina: true,
-    background: {
-      color: "transparent", 
-    },
+    background: { color: "transparent" },
   }), [theme]); 
 
   const [isLogin, setIsLogin] = useState(true);
   const [signupStep, setSignupStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [agree, setAgree] = useState(false);
-
-  const token = localStorage.getItem('token');
-
-  useEffect(() => {
-    if (token) {
-      navigate('/');
-    }
-  }, [token, navigate]);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -136,7 +82,8 @@ const Auth = () => {
   const handleResendOtp = async () => {
     setError('');
     try {
-      await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/auth/resend-otp`, {
+      // ✅ FIX 2: Use relative path (BaseURL is in axios.js)
+      await API.post('/auth/resend-otp', {
         email: formData.email
       });
       toast.success("New code sent! Check your email.");
@@ -150,16 +97,15 @@ const Auth = () => {
     setError('');
     setLoading(true);
 
-    const API_URL = `${import.meta.env.VITE_SERVER_URL}/api/auth`; 
-
     try {
       if (isLogin) {
-        const response = await axios.post(`${API_URL}/login`, {
+        // ✅ FIX 3: Login Logic using API instance
+        const response = await API.post('/auth/login', {
           email: formData.email,
           password: formData.password
         });
 
-        localStorage.setItem('token', response.data.token);
+        // Store user info (Cookie handles the token automatically)
         localStorage.setItem('user', JSON.stringify(response.data.user));
 
         setLoading(false);
@@ -179,7 +125,8 @@ const Auth = () => {
           return;
         }
 
-        await axios.post(`${API_URL}/register`, {
+        // ✅ FIX 4: Register Logic
+        await API.post('/auth/register', {
           name: formData.fullName,
           email: formData.email,
           password: formData.password
@@ -191,7 +138,8 @@ const Auth = () => {
       }
 
       else if (signupStep === 2) {
-        await axios.post(`${API_URL}/verify-otp`, {
+        // ✅ FIX 5: Verify Logic
+        await API.post('/auth/verify-otp', {
           email: formData.email,
           otp: formData.otp
         });
@@ -209,18 +157,8 @@ const Auth = () => {
   };
 
   return (
-    // FIX 2: Main Layout
-    // - min-h-screen: Ensures full height
-    // - flex flex-col: Standard layout
-    // - overflow-x-hidden: Prevents horizontal scroll
-    // - NOTE: We removed 'justify-center' from here!
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-200 relative overflow-x-hidden">
       
-      {/* FIX 3: Particles Layer 
-          - fixed inset-0: Keeps background stuck to screen, doesn't scroll with content
-          - z-0: Keeps it behind everything
-          - pointer-events-none: Ensures clicks pass through to the form if needed (though canvas usually handles this)
-      */}
       {init && (
         <div className="fixed inset-0 z-0">
             <Particles
@@ -231,12 +169,6 @@ const Auth = () => {
         </div>
       )}
 
-      {/* FIX 4: Content Wrapper
-          - absolute top-0 w-full: Overlays on top of the fixed particles
-          - flex flex-col: Layout direction
-          - pt-24 (Mobile): Adds top padding so form starts ~100px down. Stable. No Jumping.
-          - md:justify-center md:pt-0 (Desktop): Re-enables centering on big screens where keyboards don't overlap.
-      */}
       <div className="relative z-10 flex flex-col min-h-screen pt-24 pb-12 sm:px-6 lg:px-8 md:justify-center md:pt-0">
         
         {/* Logo */}

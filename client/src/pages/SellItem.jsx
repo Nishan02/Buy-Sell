@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar'; 
 import { FaCloudUploadAlt, FaRupeeSign, FaMapMarkerAlt, FaTag, FaCamera, FaUser, FaPhone, FaEnvelope, FaTimesCircle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import API from '../api/axios'; // ✅ IMPORT AXIOS INSTANCE
 
 const SellItem = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const SellItem = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Pre-fill user details for UI convenience (Auth is handled by cookie)
     const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
     if (savedUser.name) {
       setFormData(prev => ({
@@ -83,7 +85,7 @@ const SellItem = () => {
       data.append('contactNumber', `91${rawPhone}`); 
       data.append('description', formData.description);
 
-      // ✅ ADDED THESE TWO LINES (This fixes the issue)
+      // Seller info
       data.append('sellerName', formData.sellerName);
       data.append('sellerEmail', formData.sellerEmail);
 
@@ -91,27 +93,17 @@ const SellItem = () => {
         data.append('images', file); 
       });
 
-      const token = localStorage.getItem('token'); 
-      const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/items`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}` 
-        },
-        body: data 
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to create item');
-      }
+      // ✅ FIX: Use API.post
+      // - No token needed (Cookie sent automatically)
+      // - Axios handles 'Content-Type: multipart/form-data' automatically
+      await API.post('/items', data);
 
       toast.success('Item posted successfully!');
       navigate('/'); 
 
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      setError(err.response?.data?.message || 'Failed to create item');
     } finally {
       setLoading(false);
     }

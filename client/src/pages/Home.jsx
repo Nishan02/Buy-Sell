@@ -57,16 +57,17 @@ const Home = () => {
     } catch (error) {
       console.error("Error fetching items:", error);
     } finally {
-      // Small delay to prevent flickering if api is too fast (optional)
       setTimeout(() => setLoading(false), 300);
     }
   };
 
   const fetchWishlist = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return; 
+    // ✅ FIX 1: Check for 'user' object instead of 'token' string
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) return; 
 
     try {
+      // API instance automatically sends the HttpOnly cookie
       const response = await API.get('/users/wishlist');
       const ids = response.data.map(item => item._id);
       setWishlist(ids);
@@ -79,8 +80,9 @@ const Home = () => {
     e.preventDefault(); 
     e.stopPropagation();
 
-    const token = localStorage.getItem('token');
-    if (!token) {
+    // ✅ FIX 2: Check for 'user' object
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) {
         toast.warning("Please login to save items to wishlist!");
         return;
     }
