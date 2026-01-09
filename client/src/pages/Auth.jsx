@@ -214,8 +214,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col justify-start sm:justify-center pt-20 sm:pt-0 sm:px-6 lg:px-8 transition-colors duration-200 relative overflow-hidden">      
-      {/* RENDER PARTICLES */}
+    <div className="min-h-[100dvh] bg-gray-100 dark:bg-gray-900 flex flex-col justify-start sm:justify-center pt-20 sm:pt-0 sm:px-6 lg:px-8 transition-colors duration-200 relative">      {/* RENDER PARTICLES */}
       {init && (
         <Particles
           id="tsparticles"
