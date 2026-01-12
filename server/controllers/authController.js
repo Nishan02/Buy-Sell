@@ -186,6 +186,7 @@ export const logoutUser = (req, res) => {
         // MUST MATCH sendToken options to delete successfully
         sameSite: 'None', 
         secure: true,
+        domain: ".kampuscart.site"
     });
 
     res.status(200).json({ success: true, message: 'Logged out successfully' });
