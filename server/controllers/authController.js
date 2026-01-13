@@ -168,6 +168,8 @@ export const loginUser = async (req, res) => {
             }
         }
 
+        res.clearCookie('token', { domain: 'api.kampuscart.site', path: '/' });
+
         // Send Token via Cookie Helper
         sendToken(user, 200, res);
 
@@ -187,6 +189,15 @@ export const logoutUser = (req, res) => {
         domain: ".kampuscart.site", // <--- Must Match Login
         path: "/"
     });
+
+    // 1. Clear the NEW wildcard cookie (.kampuscart.site)
+    res.clearCookie('token', { ...cookieOptions, domain: ".kampuscart.site" });
+
+    // 2. Clear the OLD specific cookie (api.kampuscart.site)
+    res.clearCookie('token', { ...cookieOptions, domain: "api.kampuscart.site" });
+
+    // 3. Clear default (no domain specified) just to be safe
+    res.clearCookie('token', cookieOptions);
 
     res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
