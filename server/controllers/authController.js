@@ -17,9 +17,9 @@ const sendToken = (user, statusCode, res) => {
     const options = {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 Days
         httpOnly: true,
-        sameSite: 'None', 
-        secure: true, 
-        domain: ".kampuscart.site", // <--- CRITICAL: Must match Logout
+        sameSite: 'lax', 
+        secure: false,
+        //domain: ".kampuscart.site", // <--- CRITICAL: Must match Logout
         path: "/" // Explicit path ensures no ambiguity
     };
 
@@ -178,27 +178,25 @@ export const loginUser = async (req, res) => {
     }
 };
 
-// --- LOGOUT USER ---
 export const logoutUser = (req, res) => {
-    // ⚡ FIXED: Ensure options match 'sendToken' exactly
-    res.cookie('token', '', {
+    // 1. Define the base options that apply to all cookies first
+    const baseCookieOptions = {
         httpOnly: true,
-        expires: new Date(0), // Set to Epoch time (Instant Expiry)
         sameSite: 'None', 
         secure: true,
-        domain: ".kampuscart.site", // <--- Must Match Login
         path: "/"
-    });
+    };
 
-    // 1. Clear the NEW wildcard cookie (.kampuscart.site)
-    res.clearCookie('token', { ...cookieOptions, domain: ".kampuscart.site" });
+    // 2. Clear the NEW wildcard cookie (.kampuscart.site)
+    res.clearCookie('token', { ...baseCookieOptions, domain: ".kampuscart.site" });
 
-    // 2. Clear the OLD specific cookie (api.kampuscart.site)
-    res.clearCookie('token', { ...cookieOptions, domain: "api.kampuscart.site" });
+    // 3. Clear the OLD specific cookie (api.kampuscart.site)
+    res.clearCookie('token', { ...baseCookieOptions, domain: "api.kampuscart.site" });
 
-    // 3. Clear default (no domain specified) just to be safe
-    res.clearCookie('token', cookieOptions);
+    // 4. Clear default (no domain specified) just to be safe
+    res.clearCookie('token', baseCookieOptions);
 
+    // 5. Send success response
     res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
 
