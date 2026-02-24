@@ -46,47 +46,58 @@ export const createItem = async (req, res) => {
         // 🧹 CLEAR CACHE so the new item shows up on the home page
         await clearItemCache();
 
+        // 👇 --- NEW: MULTI-DEVICE BROADCAST --- 👇
         const sendPushNotifications = async () => {
             try {
-                // 1. Format the payload (Use an environment variable for the domain when deploying!)
-                const frontendUrl = 'https://www.kampuscart.site';
+                const frontendUrl = 'https://www.kampuscart.site'; // Change to your actual frontend URL
                 const payload = JSON.stringify({
                     title: 'New Deal on KampusCart! 🛒',
                     body: `${title} was just listed for ₹${price} in ${category}.`,
-                    url: `${frontendUrl}/item/${newItem._id}` ,
-                    icon: `${frontendUrl}/logo.png`, // Make sure you have a logo.png in your frontend public folder!
+                    url: `${frontendUrl}/item/${newItem._id}`,
+                    icon: imageUrls[0],
                     image: imageUrls[0]
                 });
 
-                // 2. Find subscribed users (excluding the person who just posted the item)
+                const currentUserId = req.user._id || req.user.id;
+
+                // 1. Find users who have AT LEAST one device subscribed
                 const subscribedUsers = await User.find({
-                    pushSubscription: { $ne: null },
-                    _id: { $ne: req.user.id } 
+                    pushSubscriptions: { $exists: true, $not: { $size: 0 } },
+                    _id: { $ne: currentUserId } 
                 });
 
-                // 3. Fire off notifications in parallel
-                const pushPromises = subscribedUsers.map(user => {
-                    return webpush.sendNotification(user.pushSubscription, payload)
-                        .catch(async (error) => {
-                            // Status 410 or 404 means the user unsubscribed or blocked notifications in their browser settings
-                            if (error.statusCode === 410 || error.statusCode === 404) {
-                                console.log(`Cleaning up dead subscription for user: ${user.email}`);
-                                await User.findByIdAndUpdate(user._id, { pushSubscription: null });
-                            } else {
-                                console.error(`Push error for ${user.email}:`, error);
-                            }
-                        });
+                const pushPromises = [];
+
+                // 2. Loop through every user...
+                subscribedUsers.forEach(user => {
+                    // ...and loop through every device they own!
+                    user.pushSubscriptions.forEach(sub => {
+                        const promise = webpush.sendNotification(sub, payload)
+                            .catch(async (error) => {
+                                // If a user uninstalls the browser on one device, remove JUST that device
+                                if (error.statusCode === 410 || error.statusCode === 404) {
+                                    console.log(`Cleaning up dead device for user: ${user.email}`);
+                                    await User.findByIdAndUpdate(user._id, { 
+                                        $pull: { pushSubscriptions: sub } 
+                                    });
+                                } else {
+                                    console.error(`Push error for ${user.email}:`, error);
+                                }
+                            });
+                        pushPromises.push(promise);
+                    });
                 });
 
+                // Fire them all at once
                 await Promise.all(pushPromises);
-                console.log(`Successfully broadcasted push alerts to ${subscribedUsers.length} users.`);
+                console.log(`Successfully broadcasted push alerts to ${pushPromises.length} devices.`);
             } catch (pushError) {
                 console.error("Fatal error broadcasting push notifications:", pushError);
             }
         };
 
-        // Execute the broadcast in the background (Notice there is no 'await' here!)
         sendPushNotifications();
+        // 👆 ----------------------------------------- 👆
 
         res.status(201).json(newItem);
     } catch (error) {

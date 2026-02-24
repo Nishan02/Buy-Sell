@@ -40,12 +40,11 @@ const userSchema = new mongoose.Schema({
     isBanned: { type: Boolean, default: false },
     banExpiresAt: { type: Date, default: null }, // If null & isBanned=true, it's permanent
 
-    pushSubscription: { 
-    type: Object, 
-    default: null 
-},
-
-
+    pushSubscriptions: { 
+        type: Array, 
+        default: [] 
+    }
+    
 }, { timestamps: true });
 
 export default mongoose.model('User', userSchema);
