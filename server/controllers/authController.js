@@ -17,9 +17,9 @@ const sendToken = (user, statusCode, res) => {
     const options = {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 Days
         httpOnly: true,
-        sameSite: 'lax', 
-        secure: false,
-        //domain: ".kampuscart.site", // <--- CRITICAL: Must match Logout
+        sameSite: 'None', 
+        secure: true,
+        domain: ".kampuscart.site", // <--- CRITICAL: Must match Logout
         path: "/" // Explicit path ensures no ambiguity
     };
 
