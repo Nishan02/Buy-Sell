@@ -31,6 +31,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   
   const [visibleCount, setVisibleCount] = useState(8); 
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   // Filters & Sorting
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -105,13 +106,23 @@ const Home = () => {
         window.innerHeight + document.documentElement.scrollTop + 100 
         >= document.documentElement.offsetHeight
       ) {
-        setVisibleCount((prev) => prev + 8);
+        // 👇 Prevent it from firing repeatedly while already "loading"
+        if (!isFetchingMore && visibleCount < items.length) {
+          setIsFetchingMore(true);
+          
+          // Add an 800ms artificial delay for that smooth loading effect
+          setTimeout(() => {
+            setVisibleCount((prev) => prev + 8);
+            setIsFetchingMore(false);
+          }, 800);
+        }
       }
     };
 
     window.addEventListener('scroll', handleScroll);
+    // 👇 Make sure to add the dependencies so the listener uses the freshest state!
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isFetchingMore, visibleCount, items.length]);
 
   useEffect(() => {
     fetchItems();
@@ -250,11 +261,21 @@ const Home = () => {
               </div>
             )}
             
-            {!loading && items.length > visibleCount && (
-               <div className="py-8 text-center text-gray-400 text-sm italic">
-                 Scroll for more...
-               </div>
-            )}
+           {/* --- INFINITE SCROLL LOADER --- */}
+  {!loading && items.length > visibleCount && (
+    <div className="py-10 flex justify-center items-center min-h-[80px]">
+      {isFetchingMore ? (
+        <div className="flex space-x-2">
+          <div className="w-3 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '-0.3s' }}></div>
+          <div className="w-3 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '-0.15s' }}></div>
+          <div className="w-3 h-3 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce"></div>
+        </div>
+      ) : (
+        // Invisible spacer so the page doesn't abruptly jump when the loader appears
+        <div className="w-full h-3"></div>
+      )}
+    </div>
+  )}
           </div>
         </section>
       </main>

@@ -169,6 +169,15 @@ export const getItems = async (req, res) => {
             // --- ORIGINAL DB LOGIC START ---
             let query = {};
 
+            // 👇 NEW: 1. Find all users who are currently banned
+            const bannedUsers = await User.find({ isBanned: true }).select('_id');
+            const bannedUserIds = bannedUsers.map(user => user._id);
+
+            // 👇 NEW: 2. Tell the query to ignore items owned by these banned users
+            if (bannedUserIds.length > 0) {
+                query.seller = { $nin: bannedUserIds };
+            }
+
             if (search) {
                 query.$or = [
                     { title: { $regex: search, $options: 'i' } },

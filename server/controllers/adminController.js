@@ -1,6 +1,19 @@
 import User from '../models/User.js';
 import Item from '../models/Item.js';
+import redis from '../config/redis.js'; // Import redis for manual clearing
 import asyncHandler from 'express-async-handler';
+
+const clearItemCache = async () => {
+    try {
+        const keys = await redis.keys("items:*"); // Find all item-related keys
+        if (keys.length > 0) {
+            await redis.del(keys); // Delete them
+           // console.log("🧹 Item Cache Cleared!");
+        }
+    } catch (error) {
+        console.error("Cache Clear Error:", error);
+    }
+};
 
 // @desc    Get dashboard stats (Users, Items, Sold Items)
 // @route   GET /api/admin/stats
@@ -42,7 +55,13 @@ export const deleteUser = async (req, res) => {
             return res.status(400).json({ message: 'Cannot delete an Admin account' }); 
         }
 
+        // Delete all items belonging to this user FIRST
+        await Item.deleteMany({ seller: user._id });
+
         await user.deleteOne();
+
+        await clearItemCache(); // Clear cache to reflect changes in user-related data
+
         res.json({ message: 'User removed' });
         
     } catch (error) {
@@ -82,6 +101,8 @@ export const banUser = async (req, res) => {
         }
 
         await user.save();
+
+        await clearItemCache(); // Clear cache to reflect changes in user status
         
         res.json({ 
             message: `User ${banType === 'unban' ? 'unbanned' : 'banned'} successfully`,
@@ -115,6 +136,9 @@ export const deleteItemAdmin = async (req, res) => {
         
         if (item) {
             await item.deleteOne();
+
+            await clearItemCache(); // Clear cache after deletion
+
             res.json({ message: 'Item removed by Admin' });
         } else {
             res.status(404).json({ message: 'Item not found' });
