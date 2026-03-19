@@ -43,9 +43,7 @@ router.post('/subscribe', async (req, res) => {
         }
 
         // Save the subscription object to the user's database record
-        await User.findByIdAndUpdate(userId, { 
-            $addToSet: { pushSubscriptions: subscription } 
-        });
+        await User.findByIdAndUpdate(userId, { pushSubscription: subscription });
 
         res.status(201).json({ message: "Push subscription saved successfully." });
     } catch (error) {
