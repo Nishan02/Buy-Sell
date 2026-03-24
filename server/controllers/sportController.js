@@ -7,13 +7,12 @@ const err = (res, message, status = 500) => res.status(status).json({ success: f
 // ── GET /api/sports ───────────────────────────────────────────────────────────
 export const getSports = async (req, res) => {
   try {
-    const { college } = req.query;
+    const { college, userId } = req.query; // <-- Extract userId from query
     const filter = {};
     if (college) filter.college = college;
 
     const sports = await Sport.find(filter).sort({ eventDate: 1 }).lean();
 
-    // Attach registration count to each sport
     const ids = sports.map(s => s._id);
     const counts = await SportRegistration.aggregate([
       { $match: { sport: { $in: ids } } },
@@ -21,16 +20,18 @@ export const getSports = async (req, res) => {
     ]);
     const countMap = Object.fromEntries(counts.map(c => [String(c._id), c.count]));
 
-    // Check which sports the current user has registered for (BULLETPROOF ID)
+    // ── BULLETPROOF USER CHECK ──
+    const currentUserId = (req.user && (req.user._id || req.user.id)) || userId;
     let userRegisteredSportIds = [];
-    if (req.user) {
-      const userId = req.user._id || req.user.id; // <-- YOUR FIX APPLIED HERE
+    
+    if (currentUserId) {
       const userRegs = await SportRegistration.find({ 
-        registeredBy: userId, 
+        registeredBy: currentUserId, 
         sport: { $in: ids } 
       }).lean();
       userRegisteredSportIds = userRegs.map(r => String(r.sport));
     }
+    // ────────────────────────────
 
     const enriched = sports.map(s => ({ 
       ...s, 
@@ -48,24 +49,29 @@ export const getSports = async (req, res) => {
 // ── GET /api/sports/:id ───────────────────────────────────────────────────────
 export const getSport = async (req, res) => {
   try {
+    const { userId } = req.query; // <-- Extract userId from query
+    
     const sport = await Sport.findById(req.params.id).lean();
     if (!sport) return err(res, 'Sport not found.', 404);
 
     const registrationCount = await SportRegistration.countDocuments({ sport: sport._id });
 
-    // Check if the user is registered for this specific sport (BULLETPROOF ID)
+    // ── BULLETPROOF USER CHECK ──
+    const currentUserId = (req.user && (req.user._id || req.user.id)) || userId;
     let hasRegistered = false;
-    if (req.user) {
-      const userId = req.user._id || req.user.id; // <-- YOUR FIX APPLIED HERE
-      const reg = await SportRegistration.findOne({ sport: sport._id, registeredBy: userId }).lean();
+    
+    if (currentUserId) {
+      const reg = await SportRegistration.findOne({ sport: sport._id, registeredBy: currentUserId }).lean();
       if (reg) hasRegistered = true;
     }
+    // ────────────────────────────
 
     return ok(res, { data: { ...sport, registrationCount, hasRegistered } });
   } catch {
     return err(res, 'Server error.');
   }
 };
+
 
 // ── POST /api/sports ──────────────────────────────────────────────────────────
 export const createSport = async (req, res) => {
