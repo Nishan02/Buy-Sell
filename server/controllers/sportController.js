@@ -5,7 +5,6 @@ const ok  = (res, data, status = 200) => res.status(status).json({ success: true
 const err = (res, message, status = 500) => res.status(status).json({ success: false, message });
 
 // ── GET /api/sports ───────────────────────────────────────────────────────────
-// ── GET /api/sports ───────────────────────────────────────────────────────────
 export const getSports = async (req, res) => {
   try {
     const { college } = req.query;
@@ -22,7 +21,7 @@ export const getSports = async (req, res) => {
     ]);
     const countMap = Object.fromEntries(counts.map(c => [String(c._id), c.count]));
 
-    // ── NEW: Check which sports the current user has registered for ──
+    // Check which sports the current user has registered for
     let userRegisteredSportIds = [];
     if (req.user) {
       const userRegs = await SportRegistration.find({ 
@@ -31,12 +30,11 @@ export const getSports = async (req, res) => {
       }).lean();
       userRegisteredSportIds = userRegs.map(r => String(r.sport));
     }
-    // ─────────────────────────────────────────────────────────────────
 
     const enriched = sports.map(s => ({ 
       ...s, 
       registrationCount: countMap[String(s._id)] || 0,
-      hasRegistered: userRegisteredSportIds.includes(String(s._id)) // <-- Added this flag
+      hasRegistered: userRegisteredSportIds.includes(String(s._id))
     }));
 
     return ok(res, { data: enriched });
@@ -53,7 +51,15 @@ export const getSport = async (req, res) => {
     if (!sport) return err(res, 'Sport not found.', 404);
 
     const registrationCount = await SportRegistration.countDocuments({ sport: sport._id });
-    return ok(res, { data: { ...sport, registrationCount } });
+
+    // Check if the user is registered for this specific sport
+    let hasRegistered = false;
+    if (req.user) {
+      const reg = await SportRegistration.findOne({ sport: sport._id, registeredBy: req.user._id }).lean();
+      if (reg) hasRegistered = true;
+    }
+
+    return ok(res, { data: { ...sport, registrationCount, hasRegistered } });
   } catch {
     return err(res, 'Server error.');
   }
@@ -206,7 +212,6 @@ export const registerForSport = async (req, res) => {
 };
 
 // ── GET /api/sports/:id/registrations ────────────────────────────────────────
-// Organizer / admin only
 export const getRegistrations = async (req, res) => {
   try {
     const sport = await Sport.findById(req.params.id);
