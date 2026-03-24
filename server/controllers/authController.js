@@ -17,13 +17,13 @@ const sendToken = (user, statusCode, res) => {
   // If you are testing on localhost, you might need to temporarily toggle these, 
   // but for your live Vercel/Render site, they MUST be exactly this:
   const options = {
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 Days
-    httpOnly: true,
-    sameSite: 'lax', // Required for Vercel -> Render communication
-    secure: false,     // Required when sameSite is 'None'
-    // domain: ".kampuscart.site",
-    path: "/"
-  };
+  expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 Days
+  httpOnly: true,
+  secure: true,              // MUST be true in production (HTTPS)
+  sameSite: 'none',          // Required for cross-origin (Vercel ↔ Render)
+  domain: ".kampuscart.site", // Enable sharing across subdomains
+  path: "/"
+};
 
   res.cookie('token', token, options);
 
