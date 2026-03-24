@@ -21,11 +21,12 @@ export const getSports = async (req, res) => {
     ]);
     const countMap = Object.fromEntries(counts.map(c => [String(c._id), c.count]));
 
-    // Check which sports the current user has registered for
+    // Check which sports the current user has registered for (BULLETPROOF ID)
     let userRegisteredSportIds = [];
     if (req.user) {
+      const userId = req.user._id || req.user.id; // <-- YOUR FIX APPLIED HERE
       const userRegs = await SportRegistration.find({ 
-        registeredBy: req.user._id, 
+        registeredBy: userId, 
         sport: { $in: ids } 
       }).lean();
       userRegisteredSportIds = userRegs.map(r => String(r.sport));
@@ -52,10 +53,11 @@ export const getSport = async (req, res) => {
 
     const registrationCount = await SportRegistration.countDocuments({ sport: sport._id });
 
-    // Check if the user is registered for this specific sport
+    // Check if the user is registered for this specific sport (BULLETPROOF ID)
     let hasRegistered = false;
     if (req.user) {
-      const reg = await SportRegistration.findOne({ sport: sport._id, registeredBy: req.user._id }).lean();
+      const userId = req.user._id || req.user.id; // <-- YOUR FIX APPLIED HERE
+      const reg = await SportRegistration.findOne({ sport: sport._id, registeredBy: userId }).lean();
       if (reg) hasRegistered = true;
     }
 
@@ -94,7 +96,7 @@ export const createSport = async (req, res) => {
       qrCodeUrl:           req.file?.path || '',
       rules:               rules?.trim() || '',
       organizer: {
-        user:  req.user._id,
+        user:  req.user._id || req.user.id,
         name:  req.user.name,
         phone: organizerPhone?.trim() || '',
       },
@@ -118,7 +120,8 @@ export const updateSport = async (req, res) => {
     const sport = await Sport.findById(req.params.id);
     if (!sport) return err(res, 'Sport not found.', 404);
 
-    const isOrganizer = String(sport.organizer.user) === String(req.user._id);
+    const userId = req.user._id || req.user.id;
+    const isOrganizer = String(sport.organizer.user) === String(userId);
     if (!isOrganizer && !req.user.isAdmin) return err(res, 'Not authorized.', 403);
 
     const editable = [
@@ -144,7 +147,8 @@ export const deleteSport = async (req, res) => {
     const sport = await Sport.findById(req.params.id);
     if (!sport) return err(res, 'Sport not found.', 404);
 
-    const isOrganizer = String(sport.organizer.user) === String(req.user._id);
+    const userId = req.user._id || req.user.id;
+    const isOrganizer = String(sport.organizer.user) === String(userId);
     if (!isOrganizer && !req.user.isAdmin) return err(res, 'Not authorized.', 403);
 
     await SportRegistration.deleteMany({ sport: sport._id });
@@ -164,8 +168,10 @@ export const registerForSport = async (req, res) => {
     if (new Date(sport.lastRegistrationDate) < new Date())
       return err(res, 'Registration deadline has passed.', 400);
 
+    const userId = req.user._id || req.user.id;
+
     // Duplicate check
-    const existing = await SportRegistration.findOne({ sport: sport._id, registeredBy: req.user._id });
+    const existing = await SportRegistration.findOne({ sport: sport._id, registeredBy: userId });
     if (existing) return err(res, 'You have already registered for this sport.', 400);
 
     // Max teams cap
@@ -199,7 +205,7 @@ export const registerForSport = async (req, res) => {
       year,
       paymentProofUrl,
       paymentProofType,
-      registeredBy:   req.user._id,
+      registeredBy:   userId,
       college:        req.user.college,
     });
 
@@ -217,7 +223,8 @@ export const getRegistrations = async (req, res) => {
     const sport = await Sport.findById(req.params.id);
     if (!sport) return err(res, 'Sport not found.', 404);
 
-    const isOrganizer = String(sport.organizer.user) === String(req.user._id);
+    const userId = req.user._id || req.user.id;
+    const isOrganizer = String(sport.organizer.user) === String(userId);
     if (!isOrganizer && !req.user.isAdmin) return err(res, 'Not authorized.', 403);
 
     const regs = await SportRegistration
@@ -238,7 +245,8 @@ export const updateRegistrationStatus = async (req, res) => {
     const sport = await Sport.findById(req.params.id);
     if (!sport) return err(res, 'Sport not found.', 404);
 
-    const isOrganizer = String(sport.organizer.user) === String(req.user._id);
+    const userId = req.user._id || req.user.id;
+    const isOrganizer = String(sport.organizer.user) === String(userId);
     if (!isOrganizer && !req.user.isAdmin) return err(res, 'Not authorized.', 403);
 
     const { status } = req.body;
