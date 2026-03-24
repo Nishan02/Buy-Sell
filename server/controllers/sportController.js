@@ -5,6 +5,7 @@ const ok  = (res, data, status = 200) => res.status(status).json({ success: true
 const err = (res, message, status = 500) => res.status(status).json({ success: false, message });
 
 // ── GET /api/sports ───────────────────────────────────────────────────────────
+// ── GET /api/sports ───────────────────────────────────────────────────────────
 export const getSports = async (req, res) => {
   try {
     const { college } = req.query;
@@ -20,7 +21,23 @@ export const getSports = async (req, res) => {
       { $group: { _id: '$sport', count: { $sum: 1 } } },
     ]);
     const countMap = Object.fromEntries(counts.map(c => [String(c._id), c.count]));
-    const enriched = sports.map(s => ({ ...s, registrationCount: countMap[String(s._id)] || 0 }));
+
+    // ── NEW: Check which sports the current user has registered for ──
+    let userRegisteredSportIds = [];
+    if (req.user) {
+      const userRegs = await SportRegistration.find({ 
+        registeredBy: req.user._id, 
+        sport: { $in: ids } 
+      }).lean();
+      userRegisteredSportIds = userRegs.map(r => String(r.sport));
+    }
+    // ─────────────────────────────────────────────────────────────────
+
+    const enriched = sports.map(s => ({ 
+      ...s, 
+      registrationCount: countMap[String(s._id)] || 0,
+      hasRegistered: userRegisteredSportIds.includes(String(s._id)) // <-- Added this flag
+    }));
 
     return ok(res, { data: enriched });
   } catch (error) {
