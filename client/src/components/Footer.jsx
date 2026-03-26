@@ -32,9 +32,9 @@ const Footer = () => {
                 alt="KampusCart Logo" 
                 className="h-6 w-6 mr-1 object-contain" 
               />
-              <span>
-                kampus<span className="text-cyan-400">Cart</span>
-              </span>
+              <span className="bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent">
+    kampusCart
+  </span>
             </Link>
 
             <p className="text-slate-400 mb-4 text-sm leading-snug max-w-xs">

@@ -234,15 +234,17 @@ const Navbar = () => {
 
           {/* Logo + College Badge */}
           <div className="flex-shrink-0 flex items-center gap-3 cursor-pointer min-w-fit" onClick={() => navigate('/')}>
-            <div className="flex items-center text-xl sm:text-2xl font-black text-cyan-400 tracking-tight">
-              <img
-                src="/logo.png"
-                alt="KampusCart Logo"
-                // Reduced the mr (margin-right) classes here:
-                className="h-10 w-10 sm:h-12 sm:w-12 mr-0.5 sm:mr-1 object-contain"
-              />
-              <span className="dark:text-white">kampus<span className="text-slate-300 dark:text-slate-400">Cart</span></span>
-            </div>
+           <div className="flex items-center text-xl sm:text-2xl font-black tracking-tight">
+  <img
+    src="/logo.png"
+    alt="KampusCart Logo"
+    className="h-10 w-10 sm:h-12 sm:w-12 mr-0.5 sm:mr-1 object-contain"
+  />
+
+  <span className="bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent">
+    kampusCart
+  </span>
+</div>
             {selectedCollege && (
               <button
                 className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-all hover:opacity-75"
