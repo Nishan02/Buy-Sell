@@ -72,7 +72,6 @@ export const getSport = async (req, res) => {
   }
 };
 
-
 // ── POST /api/sports ──────────────────────────────────────────────────────────
 export const createSport = async (req, res) => {
   try {

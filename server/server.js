@@ -20,6 +20,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import studyMaterialRoutes from './routes/studyMaterialRoutes.js';
 import sportRoutes from './routes/sportRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
 import { startCronJobs } from './utils/cronJobs.js';
 
 // Connect to Database
