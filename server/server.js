@@ -62,6 +62,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/materials', studyMaterialRoutes);
 app.use('/api/sports', sportRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({
