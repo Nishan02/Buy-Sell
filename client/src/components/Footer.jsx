@@ -43,10 +43,10 @@ const Footer = () => {
 
             {/* Social Icons */}
             <div className="flex space-x-3 mb-6">
-              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors"><FaFacebook size={18} /></a>
-              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors"><FaTwitter size={18} /></a>
+              {/* <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors"><FaFacebook size={18} /></a> */}
+              <a href="https://x.com/kampus_cart" className="text-slate-400 hover:text-cyan-400 transition-colors"><FaTwitter size={18} /></a>
               <a href="https://www.instagram.com/kampuscart/?hl=en" className="text-slate-400 hover:text-cyan-400 transition-colors"><FaInstagram size={18} /></a>
-              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors"><FaLinkedin size={18} /></a>
+              <a href="https://www.linkedin.com/company/kampuscart" className="text-slate-400 hover:text-cyan-400 transition-colors"><FaLinkedin size={18} /></a>
             </div>
           </div>
 
