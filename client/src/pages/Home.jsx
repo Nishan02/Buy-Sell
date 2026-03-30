@@ -6,6 +6,8 @@ import ItemCard from '../components/ItemCard';
 import API from '../api/axios.js';
 import { toast } from "react-toastify";
 import { useCollege } from '../context/CollegeContext';
+import SEOHead from '../components/SEOHead';
+import { SEO } from '../utils/seoTemplates';
 
 // --- SKELETON COMPONENT ---
 const SkeletonItemCard = () => (
@@ -154,8 +156,11 @@ const Home = () => {
     }
   }, [searchQuery, loading]);
 
+  const seo = SEO.home(selectedCollege);
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-white dark:bg-slate-950 transition-colors duration-300">
+      <SEOHead {...seo} />
       {/* Animated Gradient Background */}
       <div className="fixed inset-0 gradient-dark-cyan-animated opacity-15 dark:opacity-30 pointer-events-none z-0"></div>
       
