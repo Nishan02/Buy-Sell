@@ -9,10 +9,17 @@ import { sendPushToCollege } from '../utils/expoPush.js';
 // --- HELPER TO CLEAR CACHE (Updated for Multi-College) ---
 const clearItemCache = async (college) => {
     try {
-        const keys = await redis.keys(`items:${college}:*`);
-        if (keys.length > 0) {
-            await redis.del(keys);
-            // console.log(`🧹 Item Cache Cleared for ${college}!`);
+        const pattern = `items:${college}:*`;
+        let cursor = '0';
+        const keysToDelete = [];
+        do {
+            const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+            cursor = nextCursor;
+            keysToDelete.push(...keys);
+        } while (cursor !== '0');
+
+        if (keysToDelete.length > 0) {
+            await redis.del(keysToDelete);
         }
     } catch (error) {
         console.error("Cache Clear Error:", error);
