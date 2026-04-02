@@ -44,7 +44,7 @@ const Contact = () => {
               Email Us
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
-              For general inquiries and support.
+              For general inquiries, support, or to request account and data deletion, email us below.
             </p>
 
             <a
