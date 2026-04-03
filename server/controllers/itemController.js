@@ -9,17 +9,10 @@ import { sendPushToCollege } from '../utils/expoPush.js';
 // --- HELPER TO CLEAR CACHE (Updated for Multi-College) ---
 const clearItemCache = async (college) => {
     try {
-        const pattern = `items:${college}:*`;
-        let cursor = '0';
-        const keysToDelete = [];
-        do {
-            const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-            cursor = nextCursor;
-            keysToDelete.push(...keys);
-        } while (cursor !== '0');
-
-        if (keysToDelete.length > 0) {
-            await redis.del(keysToDelete);
+        const keys = await redis.keys(`items:${college}:*`);
+        if (keys.length > 0) {
+            await redis.del(keys);
+            // console.log(`🧹 Item Cache Cleared for ${college}!`);
         }
     } catch (error) {
         console.error("Cache Clear Error:", error);
@@ -187,16 +180,16 @@ export const getItems = async (req, res) => {
         // ⚡ WRAP DB QUERY IN CACHE HELPER
         const items = await getOrSetCache(cacheKey, async () => {
 
-            // --- DATA ISOLATION: Match college OR legacy items with no college field ---
             // --- STRICT DATA ISOLATION: ONLY match the exact requested college ---
             const collegeFilter = { college: college };
             let query = { ...collegeFilter };
 
             if (search) {
-                // Can't have two $or at top level — combine with $and
+                // Combine filters: Must match college, MUST NOT be sold, and must match search regex
                 query = {
                     $and: [
                         collegeFilter,
+                        { isSold: { $ne: true } }, // 🛑 Hide sold items from search results
                         { $or: [
                             { title: { $regex: search, $options: 'i' } },
                             { description: { $regex: search, $options: 'i' } }
@@ -220,9 +213,10 @@ export const getItems = async (req, res) => {
                 if (maxPrice) query.price.$lte = Number(maxPrice);
             }
 
-            let sortOptions = { createdAt: -1 };
-            if (sortBy === 'priceLow') sortOptions = { price: 1 };
-            if (sortBy === 'priceHigh') sortOptions = { price: -1 };
+            // 👇 Sort: isSold=false (0) comes before isSold=true (1)
+            let sortOptions = { isSold: 1, createdAt: -1 }; 
+            if (sortBy === 'priceLow') sortOptions = { isSold: 1, price: 1 };
+            if (sortBy === 'priceHigh') sortOptions = { isSold: 1, price: -1 };
 
             return await Item.find(query)
                 .populate('seller', 'name email')
