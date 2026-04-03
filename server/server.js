@@ -47,6 +47,8 @@ app.use(cors({
   credentials: true // Crucial for cookies to work
 }));
 
+app.use('/.well-known', express.static(path.join(__dirname, '.well-known')));
+
 app.use(express.json());
 app.use(cookieParser()); // 2. USE THIS (Must be before routes)
 app.use('/uploads', express.static('uploads')); 
