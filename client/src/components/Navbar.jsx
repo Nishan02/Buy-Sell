@@ -335,31 +335,30 @@ const Navbar = () => {
 
           {/* ── SEARCH BAR (desktop) ── */}
           <div className="flex-1 mx-3 hidden md:block relative max-w-sm">
-            <form onSubmit={handleFullSearch}>
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none" />
-                <input
-                  type="text" value={searchTerm}
-                  onFocus={handleFocus}
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="Search for items..."
-                  autoComplete="off"
-                  className="w-full pl-9 pr-9 py-2.5 bg-slate-800 dark:bg-slate-800 border border-slate-700 dark:border-slate-700 rounded-xl text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"
-                />
-                {searchTerm && (
-                  <button type="button" onClick={() => { setSearchTerm(''); setSuggestions([]); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors">
-                    <FaTimes size={13} />
-                  </button>
-                )}
+            <form onSubmit={handleFullSearch} className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="text-gray-400" />
               </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onFocus={handleFocus}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search for items..."
+                autoComplete="off"
+                className="block w-full pl-10 pr-24 py-2.5 bg-white rounded-full border-none shadow-xl focus:ring-2 focus:ring-teal-400 focus:outline-none text-gray-800 dark:text-white dark:bg-slate-800 placeholder-gray-500 dark:placeholder-slate-400 text-sm transition-all"
+              />
+              <button type="submit" className="absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-bold rounded-full transition">
+                Search
+              </button>
             </form>
             {showDropdown && <SearchDropdown />}
           </div>
 
+
           {/* ── RIGHT ACTIONS ── */}
-          <div className="flex items-center gap-4 sm:gap-3 ml-auto">
+          <div className="flex items-center gap-4 sm:gap-4 ml-auto">
 
             {/* Chats (with unread badge) */}
             {isLoggedIn && (
@@ -449,15 +448,21 @@ const Navbar = () => {
       {/* ── MOBILE SEARCH BAR ── */}
       <div className="md:hidden px-4 pb-3 pt-1 relative">
         <form onSubmit={handleFullSearch} className="relative">
-          <FaSearch className="absolute left-3 top-3.5 text-slate-400 text-sm" />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FaSearch className="text-gray-400" />
+          </div>
           <input
-            type="text" value={searchTerm}
+            type="text"
+            value={searchTerm}
             onFocus={handleFocus}
             onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Search items..."
-            className="w-full pl-9 pr-3 py-2.5 border border-slate-700 rounded-xl bg-slate-800 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="block w-full pl-10 pr-24 py-3 bg-white rounded-full border-none shadow-xl focus:ring-2 focus:ring-teal-400 focus:outline-none text-gray-800 dark:text-white dark:bg-slate-800 placeholder-gray-500 dark:placeholder-slate-400 text-sm transition-all"
           />
+          <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-bold rounded-full transition">
+            Search
+          </button>
         </form>
         {showDropdown && <SearchDropdown />}
       </div>
