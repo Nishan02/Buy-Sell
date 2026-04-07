@@ -359,35 +359,14 @@ const Navbar = () => {
           </div>
 
           {/* ── RIGHT ACTIONS ── */}
-          <div className="flex items-center gap-3 ml-auto">
-
-            {/* Campus Features waffle menu */}
-            <div className="relative" ref={campusMenuRef}>
-              <button
-                onClick={() => { setIsCampusMenuOpen(p => !p); setIsProfileOpen(false); }}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  isCampusMenuOpen
-                    ? 'bg-slate-700 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-                title="Campus features"
-              >
-                <FaThLarge className="text-base" />
-                <span className="hidden lg:block">Campus</span>
-                <FaChevronDown className={`text-[10px] text-slate-400 transition-transform duration-200 ${isCampusMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {isCampusMenuOpen && <CampusMenu />}
-            </div>
-
-            {/* Separator */}
-            <div className="h-5 w-px bg-slate-700" />
+          <div className="flex items-center gap-4 sm:gap-3 ml-auto">
 
             {/* Chats (with unread badge) */}
             {isLoggedIn && (
-              <Link to="/chats" className="relative p-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-cyan-400 transition-all group" title="Chats">
+              <Link to="/chats" className="relative p-2 sm:p-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-cyan-400 transition-all group" title="Chats">
                 <FaCommentDots className="text-lg group-hover:scale-110 transition-transform" />
                 {unreadChatCount > 0 && (
-                  <span className="absolute top-1 right-1 h-4 w-4 flex items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white ring-2 ring-slate-900">
+                  <span className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white ring-2 ring-slate-900">
                     {unreadChatCount > 9 ? '9+' : unreadChatCount}
                   </span>
                 )}
@@ -397,21 +376,39 @@ const Navbar = () => {
             {/* Sell Item CTA */}
             <Link
               to="/sell"
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 shadow-md hover:shadow-cyan-500/30 transition-all transform hover:-translate-y-px"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 shadow-md hover:shadow-cyan-500/30 transition-all transform hover:-translate-y-px"
             >
               <FaPlus className="text-xs" />
               <span className="hidden md:block">Sell</span>
             </Link>
 
             {/* Separator */}
-            <div className="h-6 w-px bg-slate-700 mx-0.5 hidden sm:block" />
+            <div className="h-5 w-px bg-slate-700 hidden sm:block mx-1" />
+
+            {/* Campus Features waffle menu */}
+            <div className="relative" ref={campusMenuRef}>
+              <button
+                onClick={() => { setIsCampusMenuOpen(p => !p); setIsProfileOpen(false); }}
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  isCampusMenuOpen
+                    ? 'bg-slate-700 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+                title="Campus features"
+              >
+                <FaThLarge className="text-base" />
+                <span className="hidden lg:block">Campus</span>
+                <FaChevronDown className={`text-[10px] text-slate-400 transition-transform duration-200 hidden sm:block ${isCampusMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isCampusMenuOpen && <CampusMenu />}
+            </div>
 
             {/* ── AUTH ── */}
             {isLoggedIn ? (
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => { setIsProfileOpen(p => !p); setIsCampusMenuOpen(false); }}
-                  className={`flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl transition-all ${
+                  className={`flex items-center gap-2 pl-1 pr-1 sm:pr-2.5 py-1 rounded-xl transition-all ${
                     isProfileOpen ? 'bg-slate-700' : 'hover:bg-slate-800'
                   }`}
                 >
