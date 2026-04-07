@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import EmojiPicker from 'emoji-picker-react';
 import io from 'socket.io-client';
@@ -47,7 +47,8 @@ const Chat = () => {
   // Refs
   const socket = useRef(null);
   const selectedChatRef = useRef(null);
-  const messagesContainerRef = useRef(null); 
+  const messagesContainerRef = useRef(null);
+  const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
   const messageRefs = useRef({});
 
@@ -188,16 +189,27 @@ const Chat = () => {
     return () => clearTimeout(timer);
   };
 
-  const scrollToBottom = () => {
-    if (messagesContainerRef.current) {
-        const { scrollHeight, clientHeight } = messagesContainerRef.current;
-        messagesContainerRef.current.scrollTop = scrollHeight - clientHeight;
+  const initialScrollDone = useRef(false);
+
+  // Reset flag whenever the user switches to a different chat
+  useEffect(() => {
+    initialScrollDone.current = false;
+  }, [selectedChat]);
+
+  // Fires synchronously BEFORE the browser paints — user never sees the top
+  useLayoutEffect(() => {
+    if (!initialScrollDone.current && messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+      initialScrollDone.current = true;
     }
-  };
-  
-  useEffect(() => { 
-      setTimeout(scrollToBottom, 100); 
-  }, [messages, showEmojiPicker, isTyping, selectedChat, imagePreview]);
+  }, [messages]);
+
+  // Smooth scroll for new messages after the initial load
+  useEffect(() => {
+    if (initialScrollDone.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isTyping]);
 
   const onEmojiClick = (emojiObject) => setNewMessage(prev => prev + emojiObject.emoji);
 
@@ -606,10 +618,11 @@ const Chat = () => {
                   </div>
                 </div>
 
-                <div 
-                  ref={messagesContainerRef} 
-                  className="flex-1 overflow-y-auto p-4 space-y-4 bg-chat-pattern custom-scrollbar sm:pb-4"
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto p-4 bg-chat-pattern custom-scrollbar sm:pb-4"
                 >
+                  <div className="flex flex-col justify-end min-h-full space-y-4">
                   {messages.map((msg, index) => {
                     const isMe = String(getUserId(msg.sender)) === String(loggedInUserId);
                     const isCurrentMatch = searchMatches.length > 0 && searchMatches[currentMatchIndex] === index;
@@ -635,6 +648,8 @@ const Chat = () => {
                         <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Typing...</span>
                     </div>
                   )}
+                  <div ref={bottomRef} />
+                  </div>
                 </div>
 
                 <div className="flex-none p-3 sm:p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-30 transition-colors">
