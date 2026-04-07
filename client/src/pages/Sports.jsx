@@ -9,7 +9,7 @@ import {
   FaTrophy, FaPlus, FaMapMarkerAlt, FaCalendarAlt, FaUsers,
   FaTimes, FaSpinner, FaTrashAlt, FaRupeeSign, FaQrcode,
   FaClipboardList, FaCheckCircle, FaTimesCircle, FaHourglassHalf,
-  FaUpload, FaFileAlt,
+  FaUpload, FaFileAlt, FaEdit,
 } from 'react-icons/fa';
 
 const SPORT_TYPES = [
@@ -39,8 +39,12 @@ const Sports = () => {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
 
-  // Create sport modal
+  // today's date as YYYY-MM-DD for min/max constraints
+  const today = new Date().toISOString().split('T')[0];
+
+  // Create / Edit sport modal
   const [isSportModalOpen, setIsSportModalOpen] = useState(false);
+  const [editSportTarget, setEditSportTarget] = useState(null); // null = create
   const [sportForm, setSportForm] = useState(BLANK_SPORT_FORM);
   const [qrPreview, setQrPreview] = useState(null);
   const [submittingSport, setSubmittingSport] = useState(false);
@@ -72,18 +76,55 @@ const Sports = () => {
     }
   };
 
-  // ─── Create Sport ───────────────────────────────────────────────────────────
-  const handleSportChange = (e) => setSportForm({ ...sportForm, [e.target.name]: e.target.value });
+  // ─── Create / Edit Sport ────────────────────────────────────────────────────
+  const handleSportChange = (e) => {
+    const { name, value } = e.target;
+    setSportForm(prev => {
+      const updated = { ...prev, [name]: value };
+      // If event date changes and deadline is now after it, clear the deadline
+      if (name === 'eventDate' && prev.lastRegistrationDate && prev.lastRegistrationDate > value) {
+        updated.lastRegistrationDate = '';
+      }
+      return updated;
+    });
+  };
+
+  const openCreateSport = () => {
+    setEditSportTarget(null);
+    setSportForm(BLANK_SPORT_FORM);
+    setQrPreview(null);
+    setIsSportModalOpen(true);
+  };
+
+  const openEditSport = (sport) => {
+    setEditSportTarget(sport);
+    setSportForm({
+      title:                sport.title,
+      sportType:            sport.sportType,
+      description:          sport.description || '',
+      venue:                sport.venue,
+      eventDate:            new Date(sport.eventDate).toISOString().split('T')[0],
+      lastRegistrationDate: new Date(sport.lastRegistrationDate).toISOString().split('T')[0],
+      teamSize:             sport.teamSize,
+      maxTeams:             sport.maxTeams || '',
+      registrationFee:      sport.registrationFee,
+      rules:                sport.rules || '',
+      organizerPhone:       sport.organizer?.phone || '',
+      qrCode:               null,
+    });
+    setQrPreview(sport.qrCodeUrl || null);
+    setIsSportModalOpen(true);
+  };
 
   const handleQrUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setSportForm({ ...sportForm, qrCode: file });
+      setSportForm(prev => ({ ...prev, qrCode: file }));
       setQrPreview(URL.createObjectURL(file));
     }
   };
 
-  const handleCreateSport = async (e) => {
+  const handleSportSubmit = async (e) => {
     e.preventDefault();
     setSubmittingSport(true);
     try {
@@ -92,14 +133,22 @@ const Sports = () => {
         if (k === 'qrCode') { if (sportForm.qrCode) fd.append('qrCode', sportForm.qrCode); }
         else if (sportForm[k] !== '' && sportForm[k] !== null) fd.append(k, sportForm[k]);
       });
-      const { data } = await API.post('/sports', fd);
-      setSports([data.data, ...sports]);
+
+      if (editSportTarget) {
+        const { data } = await API.put(`/sports/${editSportTarget._id}`, fd);
+        setSports(prev => prev.map(s => s._id === editSportTarget._id ? { ...s, ...data.data } : s));
+        toast.success('Sports event updated!');
+      } else {
+        const { data } = await API.post('/sports', fd);
+        setSports(prev => [data.data, ...prev]);
+        toast.success('Sports event created!');
+      }
       setIsSportModalOpen(false);
       setSportForm(BLANK_SPORT_FORM);
       setQrPreview(null);
-      toast.success('Sports event created!');
+      setEditSportTarget(null);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create sports event.');
+      toast.error(error.response?.data?.message || 'Failed to save sports event.');
     } finally {
       setSubmittingSport(false);
     }
@@ -232,7 +281,7 @@ const Sports = () => {
           ))}
         </div>
         <button
-          onClick={() => { setSportForm(BLANK_SPORT_FORM); setQrPreview(null); setIsSportModalOpen(true); }}
+          onClick={openCreateSport}
           className="flex items-center px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-full font-bold shadow-md transition transform hover:-translate-y-0.5 flex-shrink-0"
         >
           <FaPlus className="mr-2" /> Create Sport Event
@@ -263,9 +312,14 @@ const Sports = () => {
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug">{sport.title}</h3>
                     </div>
                     {canManage(sport) && (
-                      <button onClick={() => handleDeleteSport(sport)} className="p-1.5 text-gray-400 hover:text-red-500 transition rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0" title="Delete">
-                        <FaTrashAlt size={13} />
-                      </button>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => openEditSport(sport)} className="p-1.5 text-gray-400 hover:text-amber-500 transition rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20" title="Edit">
+                          <FaEdit size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteSport(sport)} className="p-1.5 text-gray-400 hover:text-red-500 transition rounded-md hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete">
+                          <FaTrashAlt size={13} />
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -328,11 +382,11 @@ const Sports = () => {
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-amber-200 dark:border-amber-700/50 flex justify-between items-center bg-gradient-to-r from-amber-50 to-orange-50 dark:from-slate-900 dark:to-slate-800">
               <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400">
-                Create Sports Event
+                {editSportTarget ? 'Edit Sports Event' : 'Create Sports Event'}
               </h3>
-              <button onClick={() => setIsSportModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><FaTimes size={20} /></button>
+              <button onClick={() => { setIsSportModalOpen(false); setEditSportTarget(null); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><FaTimes size={20} /></button>
             </div>
-            <form onSubmit={handleCreateSport} className="p-6 space-y-4">
+            <form onSubmit={handleSportSubmit} className="p-6 space-y-4">
               <div>
                 <label className={LABEL}>Title *</label>
                 <input required type="text" name="title" value={sportForm.title} onChange={handleSportChange} placeholder="e.g. Inter-Hostel Cricket Tournament" className={INPUT} />
@@ -354,11 +408,29 @@ const Sports = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL}>Event Date *</label>
-                  <input required type="date" name="eventDate" value={sportForm.eventDate} onChange={handleSportChange} className={INPUT} />
+                  <input
+                    required type="date" name="eventDate"
+                    value={sportForm.eventDate} onChange={handleSportChange}
+                    min={today}
+                    className={INPUT}
+                  />
                 </div>
                 <div>
                   <label className={LABEL}>Reg. Deadline *</label>
-                  <input required type="date" name="lastRegistrationDate" value={sportForm.lastRegistrationDate} onChange={handleSportChange} className={INPUT} />
+                  <input
+                    required type="date" name="lastRegistrationDate"
+                    value={sportForm.lastRegistrationDate} onChange={handleSportChange}
+                    min={today}
+                    max={sportForm.eventDate || undefined}
+                    disabled={!sportForm.eventDate}
+                    title={!sportForm.eventDate ? 'Select event date first' : ''}
+                    className={`${INPUT} ${!sportForm.eventDate ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  />
+                  {sportForm.eventDate && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      Must be on or before {new Date(sportForm.eventDate + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -404,7 +476,10 @@ const Sports = () => {
               </div>
 
               <button type="submit" disabled={submittingSport} className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-bold shadow-md hover:from-amber-600 hover:to-orange-600 transition flex items-center justify-center">
-                {submittingSport ? <><FaSpinner className="animate-spin mr-2" /> Creating...</> : 'Create Sports Event'}
+                {submittingSport
+                  ? <><FaSpinner className="animate-spin mr-2" /> {editSportTarget ? 'Saving...' : 'Creating...'}</>
+                  : editSportTarget ? 'Save Changes' : 'Create Sports Event'
+                }
               </button>
             </form>
           </div>
