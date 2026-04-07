@@ -386,7 +386,7 @@ const Navbar = () => {
             <div className="h-5 w-px bg-slate-700 hidden sm:block mx-1" />
 
             {/* Campus Features waffle menu */}
-            <div className="relative" ref={campusMenuRef}>
+            <div className={`relative ${!isLoggedIn ? 'hidden sm:block' : ''}`} ref={campusMenuRef}>
               <button
                 onClick={() => { setIsCampusMenuOpen(p => !p); setIsProfileOpen(false); }}
                 className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
