@@ -22,6 +22,9 @@ import eventRoutes from './routes/eventRoutes.js';
 import studyMaterialRoutes from './routes/studyMaterialRoutes.js';
 import sportRoutes from './routes/sportRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import debugRoutes from './routes/debugRoutes.js';
+import { idempotencyCheck } from './middleware/idempotencyMiddleware.js';
 import { startCronJobs } from './utils/cronJobs.js';
 
 // Connect to Database
@@ -40,7 +43,8 @@ const allowedOrigins = [
   "https://www.kampuscart.site",   
   "https://buy-sell-murex.vercel.app",
   "https://kampuscart.onrender.com",
-  "http://localhost:8081"
+  "http://localhost:8081",
+  "https://kampus-cart.vercel.app"
 ];
 
 app.use(cors({
@@ -51,6 +55,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser()); // 2. USE THIS (Must be before routes)
 app.use('/uploads', express.static('uploads')); 
+
+// Apply Circuit Breaker Idempotency guard globally
+app.use('/api', idempotencyCheck);
 
 // Register Routes
 app.use('/api/auth', authRoutes);
@@ -65,6 +72,8 @@ app.use('/api/events', eventRoutes);
 app.use('/api/materials', studyMaterialRoutes);
 app.use('/api/sports', sportRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/debug', debugRoutes);
 
 // ── College slugs (mirrors client/src/data/colleges.js) ──────────────────────
 const COLLEGE_SLUGS = [
