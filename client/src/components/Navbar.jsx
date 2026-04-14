@@ -5,12 +5,14 @@ import {
   FaSearch, FaUserCircle, FaHistory, FaTrashAlt,
   FaHeart, FaPlus, FaSignOutAlt, FaUser, FaList, FaBullhorn,
   FaCommentDots, FaTimes, FaUserShield, FaUniversity, FaExchangeAlt, FaBars,
-  FaCalendarCheck, FaTrophy, FaBook, FaStore, FaThLarge, FaChevronDown,
+  FaCalendarCheck, FaTrophy, FaBook, FaStore, FaThLarge, FaChevronDown, FaBell,
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import API from '../api/axios';
 import io from 'socket.io-client';
 import { useCollege } from '../context/CollegeContext';
+import { useNotifications } from '../context/NotificationContext';
+import NotificationDropdown from './NotificationDropdown';
 
 const ENDPOINT = import.meta.env.VITE_SERVER_URL;
 
@@ -27,6 +29,7 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen]   = useState(false);
   const [isCampusMenuOpen, setIsCampusMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
   const [searchTerm, setSearchTerm]   = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -40,15 +43,18 @@ const Navbar = () => {
 
   const profileRef    = useRef(null);
   const campusMenuRef = useRef(null);
+  const notificationRef = useRef(null);
 
   const user       = JSON.parse(localStorage.getItem('user')) || JSON.parse(localStorage.getItem('userInfo'));
   const isLoggedIn = !!user;
+  const { unreadCount } = useNotifications();
 
   // Close menus on route change
   useEffect(() => {
     setIsProfileOpen(false);
     setIsCampusMenuOpen(false);
     setIsMobileMenuOpen(false);
+    setIsNotificationOpen(false);
   }, [location.pathname]);
 
   // Close on outside click
@@ -56,6 +62,7 @@ const Navbar = () => {
     const handler = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target))   setIsProfileOpen(false);
       if (campusMenuRef.current && !campusMenuRef.current.contains(e.target)) setIsCampusMenuOpen(false);
+      if (notificationRef.current && !notificationRef.current.contains(e.target)) setIsNotificationOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -228,10 +235,11 @@ const Navbar = () => {
   );
 
   // Waffle / Campus Menu popup
+  // Waffle / Campus Menu popup
   const CampusMenu = () => {
     const visibleFeatures = CAMPUS_FEATURES.filter(f => !f.authOnly || isLoggedIn);
     return (
-      <div className="absolute right-0 top-full mt-3 w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+      <div className="fixed top-[4.5rem] left-1/2 -translate-x-1/2 sm:absolute sm:top-full sm:left-auto sm:translate-x-0 sm:right-0 sm:mt-3 w-[92vw] sm:w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900">
           <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Campus Features</p>
@@ -331,11 +339,10 @@ const Navbar = () => {
           <div className="flex-shrink-0 flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')}>
             <img src="/logo.png" alt="KampusCart" className="h-9 w-9 object-contain" />
             <span className="text-lg font-black tracking-tight bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent hidden sm:block">
-              kampusCart
+              KampusCart
             </span>
             {selectedCollege && (
               <button
-                onClick={e => { e.stopPropagation(); handleSwitchCampus(); }}
                 className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border transition-all hover:opacity-75"
                 style={{
                   background: `${selectedCollege.theme.primary}18`,
@@ -419,6 +426,25 @@ const Navbar = () => {
               {isCampusMenuOpen && <CampusMenu />}
             </div>
 
+            {/* Notifications Bell */}
+            {isLoggedIn && (
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => { setIsNotificationOpen(p => !p); setIsProfileOpen(false); setIsCampusMenuOpen(false); }}
+                  className="relative p-2 sm:p-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-cyan-400 transition-all group"
+                  title="Notifications"
+                >
+                  <FaBell className="text-lg group-hover:scale-110 transition-transform" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0.5 right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white ring-2 ring-slate-900">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {isNotificationOpen && <NotificationDropdown onClose={() => setIsNotificationOpen(false)} />}
+              </div>
+            )}
+
             {/* ── AUTH ── */}
             {isLoggedIn ? (
               <div className="relative" ref={profileRef}>
@@ -495,15 +521,21 @@ const Navbar = () => {
             className="flex items-center justify-center w-full py-3 border-2 border-slate-700 hover:border-indigo-500 text-slate-200 font-bold rounded-xl text-sm transition-colors">
             Log in
           </Link>
-          <button onClick={() => { setIsMobileMenuOpen(false); handleSwitchCampus(); }}
-            className="flex items-center justify-center gap-2 w-full py-3 text-slate-400 hover:text-indigo-400 font-medium rounded-xl text-sm transition-colors">
-            <FaExchangeAlt className="text-xs" />
+         <button onClick={() => { setIsMobileMenuOpen(false); handleSwitchCampus(); }}
+            className="relative flex items-center justify-center w-full py-3 border border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-indigo-400 font-semibold rounded-xl text-sm transition-colors">
+            
             Switch Campus
-            {selectedCollege && (
-              <span className="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${selectedCollege.theme.primary}20`, color: selectedCollege.theme.primary }}>
-                {selectedCollege.shortName}
-              </span>
-            )}
+            
+            {/* Anchored to the right side with a small gap (right-4) */}
+            <div className="absolute right-4 flex items-center gap-2">
+              {selectedCollege && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${selectedCollege.theme.primary}20`, color: selectedCollege.theme.primary }}>
+                  {selectedCollege.shortName}
+                </span>
+              )}
+              <FaExchangeAlt className="text-xs opacity-70" />
+            </div>
+            
           </button>
         </div>
       )}

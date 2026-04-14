@@ -5,7 +5,9 @@ import './index.css' // <--- THIS LINE IS MANDATORY
 import { BrowserRouter } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext.jsx'
 import { CollegeProvider } from './context/CollegeContext.jsx'
+import { NotificationProvider } from './context/NotificationContext.jsx'
 import { HelmetProvider } from 'react-helmet-async';
+import { MaintenanceProvider } from './context/MaintenanceContext.jsx';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -15,7 +17,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <ThemeProvider>
           <CollegeProvider>
             <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
-              <App />
+              <MaintenanceProvider>
+                <NotificationProvider>
+                  <App />
+                </NotificationProvider>
+              </MaintenanceProvider>
             </GoogleOAuthProvider>
           </CollegeProvider>
         </ThemeProvider>
