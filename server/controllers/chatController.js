@@ -56,30 +56,21 @@ export const accessChat = async (req, res) => {
 };
 
 // 2. Fetch all chats for the user (Sidebar)
-// 🔴 THIS IS THE FIXED VERSION 🔴
 export const fetchChats = async (req, res) => {
     try {
-        const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = 20;
-        const skip = (page - 1) * limit;
-
         let chats = await Chat.find({
             users: { $elemMatch: { $eq: req.user._id } }
         })
         .populate("users", "-password")
         .populate("latestMessage")
-        .sort({ updatedAt: -1 })
-        .skip(skip)
-        .limit(limit);
+        .sort({ updatedAt: -1 });
 
         chats = await User.populate(chats, {
             path: "latestMessage.sender",
             select: "name email pic"
         });
 
-        const validChats = chats.filter(chat => chat.latestMessage != null);
-
-        res.status(200).json({ chats: validChats, page, hasMore: chats.length === limit });
+        res.status(200).json(chats);
     } catch (error) {
         res.status(400);
         throw new Error(error.message);
