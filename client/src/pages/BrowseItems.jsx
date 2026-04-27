@@ -33,22 +33,21 @@ const BrowseItems = () => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(12);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState('');
 
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const searchQuery = queryParams.get('search') || '';
-  const categoryFromUrl = queryParams.get('category') || '';
-
-  const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl);
+  const initialCategory = queryParams.get('category') || '';
 
   const { selectedCollege } = useCollege();
   const user = JSON.parse(localStorage.getItem('user'));
   const isViewingOtherCollege = !!(user && selectedCollege && user.college !== selectedCollege.name);
 
   useEffect(() => {
-    setSelectedCategory(categoryFromUrl);
-  }, [categoryFromUrl]);
+    if (initialCategory) setSelectedCategory(initialCategory);
+  }, []);
 
   const fetchItems = async () => {
     try {

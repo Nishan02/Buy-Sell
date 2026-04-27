@@ -5,7 +5,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white)
 
-**KampusCart** is a hyper-local, community-focused marketplace designed specifically for university campuses (MNNIT Allahabad). It bridges the gap between students who need items and those who have items to sell, featuring real-time chat, secure authentication, and a modern dark-mode enabled UI.
+**KampusCart** is a hyper-local, community-focused marketplace designed specifically for university campuses. It bridges the gap between students who need items and those who have items to sell, featuring real-time chat, secure authentication, and a modern dark-mode enabled UI.
 
 ---
 
@@ -77,7 +77,8 @@ Create a .env file in the server directory and add the following:
 1. PORT=5000
 2. MONGO_URI=your_mongodb_connection_string
 3. JWT_SECRET=your_secret_key_here
-4. RESEND_API_KEY=your_resend_api_key
+4. EMAIL_USER=your_email_for_otp@gmail.com
+5. EMAIL_PASS=your_email_app_password
 6. CLOUDINARY_CLOUD_NAME=your_cloudinary_name
 7. CLOUDINARY_API_KEY=your_cloudinary_api_key
 8. CLOUDINARY_API_SECRET=your_cloudinary_api_secret
@@ -90,3 +91,6 @@ cd client
 npm install
 npm run dev
 ```
+
+
+   
