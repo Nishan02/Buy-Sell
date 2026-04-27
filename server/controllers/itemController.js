@@ -3,9 +3,10 @@ import asyncHandler from 'express-async-handler';
 import getOrSetCache from '../utils/cacheResponse.js';
 import redis from '../config/redis.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import { sendPushToCollege }      from '../utils/expoPush.js';
 import { sendWebPushToCollege }   from '../utils/webPushService.js';
-import { createNotification, NOTIFICATION_TYPES } from '../utils/notificationHelper.js';
+import { NOTIFICATION_TYPES } from '../utils/notificationHelper.js';
 
 // --- HELPER TO CLEAR CACHE (Updated for Multi-College) ---
 const clearItemCache = async (college) => {
@@ -67,23 +68,29 @@ export const createItem = async (req, res) => {
             url: itemUrl, icon: imageUrls[0],
         });
 
-        // 3. Socket.io in-app banner (active tab / active app screen)
+        // 3. Bulk-insert in-app notifications for all college users (single DB write)
         const io = req.app.get('io');
-        if (io) {
-            io.to(`college:${college}`).emit('campus_notification', {
-                title: notifTitle, body: notifBody, data: notifData,
-            });
-        }
-
-        // 4. Create in-app notifications for all college users (except the seller)
         const users = await User.find({ college, _id: { $ne: excludeUserId } }).select('_id');
-        for (const user of users) {
-            await createNotification(io, user._id, {
+        if (users.length > 0) {
+            const notifications = users.map(user => ({
+                userId: user._id,
                 title: notifTitle,
                 message: notifBody,
                 type: NOTIFICATION_TYPES.ITEM,
-                link: itemUrl
-            });
+                link: itemUrl,
+                metadata: {}
+            }));
+            await Notification.insertMany(notifications, { ordered: false });
+
+            // Single broadcast to the college room — all subscribed sockets receive it at once
+            if (io) {
+                io.to(`college:${college}`).emit('new_notification', {
+                    title: notifTitle,
+                    message: notifBody,
+                    type: NOTIFICATION_TYPES.ITEM,
+                    link: itemUrl,
+                });
+            }
         }
 
         res.status(201).json(newItem);
@@ -162,27 +169,41 @@ export const getItems = async (req, res) => {
             const collegeFilter = { college: college };
             let query = { ...collegeFilter };
 
+            const standardCategories = ['Books & Notes', 'Electronics', 'Hostel Essentials', 'Cycles', 'Stationery'];
+            const categoryFilter = category
+                ? category === 'Others'
+                    ? { category: { $nin: standardCategories } }
+                    : { category }
+                : null;
+
+            // Category aliases: map search terms to matching category names
+            const categoryAliases = [
+                { pattern: /\bbooks?\b|\bnotes?\b/i, category: 'Books & Notes' },
+                { pattern: /\belectronics?\b|\blaptops?\b|\bphones?\b/i, category: 'Electronics' },
+                { pattern: /\bcycles?\b|\bbicycles?\b/i, category: 'Cycles' },
+                { pattern: /\bhostel\b|\bessentials?\b/i, category: 'Hostel Essentials' },
+                { pattern: /\bstationery\b|\bpens?\b|\bpencils?\b/i, category: 'Stationery' },
+            ];
+
             if (search) {
-                // Combine filters: Must match college, MUST NOT be sold, and must match search regex
+                const matchedCategory = categoryAliases.find(a => a.pattern.test(search))?.category;
+                const searchOr = [
+                    { title: { $regex: search, $options: 'i' } },
+                    { description: { $regex: search, $options: 'i' } },
+                    { category: { $regex: search, $options: 'i' } },
+                ];
+                if (matchedCategory) searchOr.push({ category: matchedCategory });
+
                 query = {
                     $and: [
                         collegeFilter,
-                        { isSold: { $ne: true } }, // 🛑 Hide sold items from search results
-                        { $or: [
-                            { title: { $regex: search, $options: 'i' } },
-                            { description: { $regex: search, $options: 'i' } }
-                        ]}
+                        { isSold: { $ne: true } },
+                        { $or: searchOr },
+                        ...(categoryFilter ? [categoryFilter] : []),
                     ]
                 };
-            }
-
-            if (category) {
-                const standardCategories = ['Books & Notes', 'Electronics', 'Hostel Essentials', 'Cycles', 'Stationery'];
-                if (category === 'Others') {
-                    query.category = { $nin: standardCategories };
-                } else {
-                    query.category = category;
-                }
+            } else if (categoryFilter) {
+                query = { ...collegeFilter, ...categoryFilter };
             }
 
             if (minPrice || maxPrice) {
@@ -291,6 +312,55 @@ export const toggleSoldStatus = async (req, res) => {
         }
 
         res.status(200).json(item);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const suggestItems = async (req, res) => {
+    try {
+        const { q, college } = req.query;
+
+        if (!q || q.trim().length === 0) return res.status(200).json([]);
+        if (!college) return res.status(400).json({ message: 'college query param is required' });
+
+        const trimmed = q.trim();
+
+        // Try $text index first (fast, scored, whole-word matches)
+        let items = await Item.find(
+            { college, isSold: { $ne: true }, $text: { $search: trimmed } },
+            { score: { $meta: 'textScore' }, title: 1, category: 1, images: 1, price: 1 }
+        )
+            .sort({ score: { $meta: 'textScore' } })
+            .limit(6)
+            .lean();
+
+        // Fallback to prefix regex when $text returns nothing
+        // (handles partial words like "Cyc" → "Cycle")
+        if (items.length === 0) {
+            const categoryAliases = [
+                { pattern: /\bbooks?\b|\bnotes?\b/i, category: 'Books & Notes' },
+                { pattern: /\belectronics?\b|\blaptops?\b|\bphones?\b/i, category: 'Electronics' },
+                { pattern: /\bcycles?\b|\bbicycles?\b/i, category: 'Cycles' },
+                { pattern: /\bhostel\b|\bessentials?\b/i, category: 'Hostel Essentials' },
+                { pattern: /\bstationery\b|\bpens?\b|\bpencils?\b/i, category: 'Stationery' },
+            ];
+            const matchedCategory = categoryAliases.find(a => a.pattern.test(trimmed))?.category;
+            const orConditions = [
+                { title: { $regex: trimmed, $options: 'i' } },
+                { category: { $regex: trimmed, $options: 'i' } },
+            ];
+            if (matchedCategory) orConditions.push({ category: matchedCategory });
+
+            items = await Item.find(
+                { college, isSold: { $ne: true }, $or: orConditions },
+                { title: 1, category: 1, images: 1, price: 1 }
+            )
+                .limit(6)
+                .lean();
+        }
+
+        res.status(200).json(items);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
