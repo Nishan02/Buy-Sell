@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar'; 
 import { FaCloudUploadAlt, FaRupeeSign, FaMapMarkerAlt, FaTag, FaCamera, FaUser, FaPhone, FaEnvelope, FaTimesCircle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import API from '../api/axios'; // ✅ IMPORT AXIOS INSTANCE
+
+// ✅ FIX: Use the custom apiCall wrapper instead of raw Axios!
+import { apiCall } from '../api/apiWithFallback'; 
 
 const SellItem = () => {
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ const SellItem = () => {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const submittingRef = React.useRef(false);
 
   useEffect(() => {
     // Pre-fill user details for UI convenience (Auth is handled by cookie)
@@ -60,12 +63,20 @@ const SellItem = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (submittingRef.current) {
+      return;
+    }
+    
     setLoading(true);
+    submittingRef.current = true;
     setError('');
 
     if (imageFiles.length === 0) {
       setError('Please upload at least one image.');
       setLoading(false);
+      submittingRef.current = false;
       return;
     }
 
@@ -73,6 +84,7 @@ const SellItem = () => {
     if (rawPhone.length !== 10) {
       setError('Please enter a valid 10-digit phone number.');
       setLoading(false);
+      submittingRef.current = false;
       return;
     }
 
@@ -93,10 +105,9 @@ const SellItem = () => {
         data.append('images', file); 
       });
 
-      // ✅ FIX: Use API.post
-      // - No token needed (Cookie sent automatically)
-      // - Axios handles 'Content-Type: multipart/form-data' automatically
-      await API.post('/items', data);
+      // ✅ FIX: Use apiCall so it automatically generates the Idempotency Key
+      // Added a 60 second timeout to ensure large image uploads on slow Wi-Fi don't fail prematurely.
+      await apiCall.post('/items', data, { timeout: 60000 });
 
       toast.success('Item posted successfully!');
       navigate('/'); 
@@ -106,6 +117,7 @@ const SellItem = () => {
       setError(err.response?.data?.message || 'Failed to create item');
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 
