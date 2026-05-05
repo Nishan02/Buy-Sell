@@ -43,6 +43,12 @@ export const createItem = async (req, res) => {
         // This prevents the frontend from timing out and throwing a 404
         res.status(201).json(newItem);
 
+            // 🛑 NEW: TEST ACCOUNT GUARD 🛑
+         if (req.user.email === 'admin@kampuscart.com') {
+            console.log("🤫 Test account detected. Skipping notifications.");
+            return; 
+        }
+
         // 🚀 2. PROCESS NOTIFICATIONS IN THE BACKGROUND
         const college = req.user.college;
         const excludeUserId = req.user._id || req.user.id;
