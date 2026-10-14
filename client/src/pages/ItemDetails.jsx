@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 import Navbar from '../components/Navbar';
@@ -9,7 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { 
   FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaCommentDots, 
   FaChevronRight, FaShare, FaFacebook, FaTwitter, FaLink, FaTimes, FaFlag,
-  FaChevronLeft, FaChevronRight as FaArrowRight, FaCalendarAlt, FaUser, FaEye
+  FaChevronLeft, FaChevronRight as FaArrowRight, FaCalendarAlt, FaUser
 } from 'react-icons/fa'; 
 
 // --- SKELETON COMPONENT ---
@@ -49,6 +49,7 @@ const ItemDetails = () => {
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
+  const scrollContainerRef = useRef(null);
   
   // State for Modals
   const [showShareModal, setShowShareModal] = useState(false);
@@ -57,7 +58,7 @@ const ItemDetails = () => {
   const [isReporting, setIsReporting] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
 
-useEffect(() => {
+  useEffect(() => {
     const fetchItemAndRelated = async () => {
       try {
         // 1. Fetch the main item
@@ -81,7 +82,7 @@ useEffect(() => {
             itemsArray = relatedRes.data.items;
           }
 
-          // 👇 UPDATED: Filter out the viewed item AND sold items
+          // Filter out the viewed item AND sold items
           const filtered = itemsArray
             .filter(i => String(i._id) !== String(id) && !i.isSold)
             .slice(0, 4);
@@ -107,8 +108,6 @@ useEffect(() => {
     setActiveImage(0);
     fetchItemAndRelated();
   }, [id]);
-
-  
 
   const handleChat = async () => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -186,11 +185,35 @@ useEffect(() => {
     return `https://wa.me/${cleanNumber}?text=${message}`;
   };
 
+  // --- IMAGE NAVIGATION HANDLER ---
+  const handleImageChange = useCallback((index, e = null) => {
+    if (e) e.stopPropagation();
+    setActiveImage(index);
+    
+    // On mobile, scroll the container to the correct image smoothly
+    if (scrollContainerRef.current) {
+      const child = scrollContainerRef.current.querySelector('.flex.sm\\:hidden');
+      if (child) {
+        scrollContainerRef.current.scrollTo({ 
+          left: index * scrollContainerRef.current.offsetWidth, 
+          behavior: 'smooth' 
+        });
+      }
+    }
+  }, []);
+
   const user = JSON.parse(localStorage.getItem('user'));
   const isOtherCollege = !!(user && item?.college && user.college !== item.college);
 
-  const displayName = item ? (item.sellerName || item.seller.name) : '';
-  const displayEmail = item ? (item.sellerEmail || item.seller.email) : '';
+  const PLACEHOLDER = 'https://placehold.co/600x400?text=No+Image';
+  // Helper: handles legacy plain string URLs and new {url, public_id} objects
+  const resolveUrl = (img) => (img && typeof img === 'object' ? img.url : img) || null;
+  const imgUrl = (img) => resolveUrl(img) || PLACEHOLDER;
+  const getItemThumb = (itm) => itm?.image || resolveUrl(itm?.images?.[0]) || PLACEHOLDER;
+
+  const images = item?.images?.length ? item.images : (item?.image ? [item.image] : []);
+  const displayName = item ? (item.sellerName || item.seller?.name) : '';
+  const displayEmail = item ? (item.sellerEmail || item.seller?.email) : '';
 
   const seo = item ? SEO.item(item, null) : null;
 
@@ -220,7 +243,7 @@ useEffect(() => {
           {/* ZOOM MODAL */}
           {isZoomed && (
             <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setIsZoomed(false)}>
-              <img src={item.images[activeImage]} className="max-w-full max-h-full object-contain rounded-lg" alt="" />
+              <img src={imgUrl(images[activeImage])} onError={e => { e.target.src = PLACEHOLDER; }} className="max-w-full max-h-full object-contain rounded-lg" alt="" />
             </div>
           )}
 
@@ -313,36 +336,63 @@ useEffect(() => {
               {/* LEFT: IMAGES */}
               <div className="flex flex-col gap-6 max-w-md mx-auto lg:mx-0 animate-fadeIn" style={{ animation: 'fadeUpIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
                 <div className="relative group">
-                  <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-white to-cyan-50 dark:from-slate-800 dark:to-slate-900 h-80 sm:h-[500px] relative flex items-center justify-center cursor-zoom-in border-2 border-cyan-200 dark:border-cyan-700/50 shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 hover:border-cyan-400" onClick={() => setIsZoomed(true)}>
-                    <img src={item.images[activeImage]} className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" alt="" />
-                    <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <FaEye className="text-white text-sm" />
+                  {/* Mobile: horizontal scroll/swipe. Desktop: single image view */}
+                  <div
+                    ref={scrollContainerRef}
+                    className="rounded-3xl overflow-x-auto overflow-y-hidden sm:overflow-hidden bg-gradient-to-br from-white to-cyan-50 dark:from-slate-800 dark:to-slate-900 h-80 sm:h-[500px] relative flex sm:items-center sm:justify-center cursor-zoom-in border-2 border-cyan-200 dark:border-cyan-700/50 shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 hover:border-cyan-400 snap-x snap-mandatory scroll-smooth scrollbar-hide"
+                    onClick={() => setIsZoomed(true)}
+                    onScroll={(e) => {
+                      const idx = Math.round(e.currentTarget.scrollLeft / e.currentTarget.offsetWidth);
+                      if (idx !== activeImage) setActiveImage(idx);
+                    }}
+                  >
+                    {/* Mobile: all images side by side for swiping */}
+                    <div className="flex sm:hidden w-full h-full flex-shrink-0">
+                      {images.map((img, i) => (
+                        <div key={i} className="snap-center flex-shrink-0 w-full h-full flex items-center justify-center">
+                          <img src={imgUrl(img)} onError={e => { e.target.src = PLACEHOLDER; }} className="w-full h-full object-contain" alt="" />
+                        </div>
+                      ))}
                     </div>
-                    {item.images.length > 1 && (
+                    {/* Desktop: single active image */}
+                    <img src={imgUrl(images[activeImage])} onError={e => { e.target.src = PLACEHOLDER; }} className="hidden sm:block w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" alt="" />
+
+                    {images.length > 1 && (
                       <>
-                        <button onClick={(e) => { e.stopPropagation(); setActiveImage((activeImage - 1 + item.images.length) % item.images.length); }} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white rounded-full p-3 transition-all opacity-0 group-hover:opacity-100 hover:scale-110"><FaChevronLeft /></button>
-                        <button onClick={(e) => { e.stopPropagation(); setActiveImage((activeImage + 1) % item.images.length); }} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white rounded-full p-3 transition-all opacity-0 group-hover:opacity-100 hover:scale-110"><FaArrowRight /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleImageChange((activeImage - 1 + images.length) % images.length); }} className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white rounded-full p-3 transition-all opacity-0 group-hover:opacity-100 hover:scale-110"><FaChevronLeft /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleImageChange((activeImage + 1) % images.length); }} className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white rounded-full p-3 transition-all opacity-0 group-hover:opacity-100 hover:scale-110"><FaArrowRight /></button>
                       </>
                     )}
                   </div>
-                  {item.images.length > 1 && (
-                    <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
-                      {activeImage + 1} / {item.images.length}
+                  {images.length > 1 && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-2 bg-black/50 backdrop-blur-sm rounded-full">
+                      {images.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={(e) => handleImageChange(i, e)}
+                          style={{
+                            width:   i === activeImage ? '8px' : Math.abs(i - activeImage) === 1 ? '6px' : '5px',
+                            height:  i === activeImage ? '8px' : Math.abs(i - activeImage) === 1 ? '6px' : '5px',
+                            opacity: i === activeImage ? 1    : Math.abs(i - activeImage) === 1 ? 0.5  : 0.3,
+                          }}
+                          className="rounded-full bg-white transition-all duration-300"
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
 
-                {item.images.length > 1 && (
+                {images.length > 1 && (
                   <div className="flex gap-3 overflow-x-auto py-2 scrollbar-hide px-2">
-                    {item.images.map((img, index) => (
+                    {images.map((img, index) => (
                       <button 
                         key={index} 
-                        onClick={() => setActiveImage(index)} 
+                        onClick={(e) => handleImageChange(index, e)} 
                         className={`relative flex-shrink-0 h-20 w-20 rounded-xl overflow-hidden border-3 transition-all duration-200 ${
                           activeImage === index ? 'border-cyan-500 shadow-lg shadow-cyan-500/30 scale-110' : 'border-slate-300 dark:border-slate-700 hover:border-cyan-400'
                         }`}
                       >
-                        <img src={img} className="w-full h-full object-cover" alt="" />
+                        <img src={imgUrl(img)} onError={e => { e.target.src = PLACEHOLDER; }} className="w-full h-full object-cover" alt="" />
                         {activeImage === index && <div className="absolute inset-0 bg-cyan-500/20 rounded-xl"></div>}
                       </button>
                     ))}
@@ -527,7 +577,8 @@ useEffect(() => {
                       >
                         <div className="h-48 w-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
                           <img 
-                            src={related.images?.[0] || '/placeholder.png'} 
+                            src={getItemThumb(related)}
+                            onError={e => { if (e.target.src !== PLACEHOLDER) e.target.src = PLACEHOLDER; }}
                             alt={related.title} 
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />

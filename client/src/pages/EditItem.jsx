@@ -64,7 +64,8 @@ const EditItem = () => {
         });
 
         if (data.images && data.images.length > 0) {
-            setPreviews(data.images);
+            // Support both legacy string URLs and new {url, public_id} objects
+            setPreviews(data.images.map(img => (img?.url || img)));
         }
 
       } catch (err) {
@@ -143,7 +144,7 @@ const EditItem = () => {
       await API.put(`/items/${id}`, data);
 
       toast.success('Item updated successfully!');
-      navigate('/my-listings');
+      setTimeout(() => navigate('/my-listings'), 100);
 
     } catch (err) {
       console.error(err);
